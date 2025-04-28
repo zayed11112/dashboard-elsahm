@@ -1,6 +1,6 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "لوحة السهم",
+  "name": "لوحة تحكم السهم للتسكين",
   "icons": [
     {
       "src": "favicon.ico",

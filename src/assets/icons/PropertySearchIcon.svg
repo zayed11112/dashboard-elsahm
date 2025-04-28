@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <path d="M256 0L64 128v384h384V128L256 0z" fill="#4A89DC"/>
+  <path d="M256 0L64 128h384L256 0z" fill="#5D9CEC"/>
+  <path d="M256 0L64 128v384h192V0z" fill="#E6E9ED"/>
+  <path d="M256 0v512h192V128L256 0z" fill="#CCD1D9"/>
+  <path d="M128 256h64v128h-64z" fill="#656D78"/>
+  <path d="M320 256h64v64h-64z" fill="#656D78"/>
+  <path d="M192 384h128v128H192z" fill="#967ADC"/>
+  <path d="M384 384h64v128h-64z" fill="#967ADC"/>
+  <path d="M64 384h128v128H64z" fill="#967ADC"/>
+  <circle cx="352" cy="192" r="96" fill="#FF7043"/>
+  <circle cx="352" cy="192" r="64" fill="#FFFFFF"/>
+  <path d="M416 192h64v160l-64 64V192z" fill="#FF9800"/>
+</svg>

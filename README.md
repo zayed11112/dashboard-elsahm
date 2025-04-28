@@ -1,46 +1,85 @@
-# Getting Started with Create React App
+# السهم للتسكين - لوحة التحكم
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+لوحة تحكم إدارية لتطبيق السهم للتسكين، تتيح إدارة العقارات والمستخدمين والحجوزات.
 
-## Available Scripts
+## الميزات
 
-In the project directory, you can run:
+- واجهة مستخدم عربية كاملة مع دعم الـ RTL
+- نظام مصادقة متكامل (تسجيل الدخول)
+- إدارة العقارات (إضافة، تعديل، حذف، عرض)
+- إدارة المستخدمين (إضافة، تعديل، حذف، عرض)
+- إدارة الحجوزات (عرض، قبول، رفض)
+- لوحة تحكم رئيسية مع إحصائيات ورسوم بيانية
+- تصميم متجاوب مع جميع أحجام الشاشات
+- دعم الوضع الليلي والنهاري
+- دعم تعدد اللغات (العربية والإنجليزية)
 
-### `npm start`
+## التقنيات المستخدمة
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+- React 18
+- TypeScript
+- Material UI 5
+- React Router 6
+- Axios للاتصال بالـ API
+- Chart.js للرسوم البيانية
+- Context API لإدارة الحالة
+- i18next لدعم تعدد اللغات
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+## متطلبات التشغيل
 
-### `npm test`
+- Node.js (الإصدار 16 أو أعلى)
+- npm (الإصدار 8 أو أعلى)
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## تثبيت وتشغيل المشروع
 
-### `npm run build`
+1. انتقل إلى مجلد لوحة التحكم:
+```
+cd dashboard
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+2. قم بتثبيت الاعتمادات:
+```
+npm install
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+3. قم بتشغيل المشروع في وضع التطوير:
+```
+npm start
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+4. لبناء إصدار للإنتاج:
+```
+npm run build
+```
 
-### `npm run eject`
+## هيكل المشروع
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+```
+src/
+├── assets/         # الصور والملفات الثابتة
+├── components/     # مكونات واجهة المستخدم القابلة لإعادة الاستخدام
+├── contexts/       # سياقات React للحالة العامة
+├── hooks/          # خطافات React المخصصة
+├── locales/        # ملفات الترجمة
+├── pages/          # صفحات التطبيق
+├── services/       # خدمات الاتصال بالـ API
+└── utils/          # أدوات وتوابع مساعدة
+```
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## API المطلوبة
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+يتطلب هذا التطبيق واجهة برمجة تطبيقات (API) تدعم العمليات التالية:
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+- المصادقة: تسجيل الدخول، التحقق من صحة الرمز المميز
+- العقارات: قائمة، إضافة، تعديل، حذف
+- المستخدمين: قائمة، إضافة، تعديل، حذف
+- الحجوزات: قائمة، عرض التفاصيل، قبول، رفض
+- إحصائيات لوحة التحكم
 
-## Learn More
+## تهيئة العنوان الأساسي للـ API
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+قم بتعديل ملف `src/services/api.ts` وتغيير المتغير `API_URL` إلى عنوان API الخاص بك.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+```typescript
+const API_URL = 'https://api.yourdomain.com';
+```
