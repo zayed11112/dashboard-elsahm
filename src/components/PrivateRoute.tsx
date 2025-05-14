@@ -7,8 +7,8 @@ import Box from '@mui/material/Box';
 const PrivateRoute: React.FC = () => {
   const { isAuthenticated, loading } = useAuth();
   
-  // BYPASS TEMPORAL: Permite el acceso sin autenticación
-  const bypassAuth = true; // Establecer como false para volver a habilitar la autenticación
+  // We'll use the real authentication now
+  const bypassAuth = false;
 
   if (loading) {
     return (
@@ -25,7 +25,6 @@ const PrivateRoute: React.FC = () => {
     );
   }
 
-  // Si bypassAuth está activado, permite el acceso independientemente de la autenticación
   return bypassAuth || isAuthenticated ? <Outlet /> : <Navigate to="/login" />;
 };
 

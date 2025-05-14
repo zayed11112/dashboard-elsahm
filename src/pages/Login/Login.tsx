@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { useThemeContext } from '../../contexts/ThemeContext';
 import {
   Container,
   Box,
@@ -9,13 +8,8 @@ import {
   TextField,
   Button,
   Paper,
-  Link,
   CircularProgress,
   Alert,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   InputAdornment,
   IconButton,
   Divider,
@@ -26,36 +20,116 @@ import {
   Login as LoginIcon,
 } from '@mui/icons-material';
 
+// Constant for the static password
+const STATIC_PASSWORD = "Okaeslam2020###";
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_TIME = 3 * 60 * 1000; // 3 minutes in milliseconds
+
 const Login: React.FC = () => {
   const { login, isAuthenticated, loading } = useAuth();
-  const { locale, setLocale } = useThemeContext();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // State for tracking login attempts
+  const [attempts, setAttempts] = useState(0);
+  const [lockedUntil, setLockedUntil] = useState<number | undefined>(undefined);
+  const [timeRemaining, setTimeRemaining] = useState(0);
+
+  // Check localStorage for previous login attempts info
+  useEffect(() => {
+    const storedAttempts = localStorage.getItem('loginAttempts');
+    const storedLockedUntil = localStorage.getItem('lockedUntil');
+    
+    if (storedAttempts) {
+      setAttempts(parseInt(storedAttempts, 10));
+    }
+    
+    if (storedLockedUntil) {
+      const lockedTime = parseInt(storedLockedUntil, 10);
+      if (lockedTime > Date.now()) {
+        setLockedUntil(lockedTime);
+      } else {
+        // Clear lockout if it's expired
+        localStorage.removeItem('lockedUntil');
+      }
+    }
+  }, []);
+
+  // Update timer if account is locked
+  useEffect(() => {
+    if (!lockedUntil) return;
+    
+    const interval = setInterval(() => {
+      const remaining = Math.max(0, lockedUntil - Date.now());
+      setTimeRemaining(remaining);
+      
+      if (remaining === 0) {
+        setLockedUntil(undefined);
+        localStorage.removeItem('lockedUntil');
+        clearInterval(interval);
+      }
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [lockedUntil]);
 
   // If already authenticated, redirect to dashboard
   if (isAuthenticated && !loading) {
     return <Navigate to="/dashboard" />;
   }
 
+  const isLocked = Boolean(lockedUntil && lockedUntil > Date.now());
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email || !password) {
-      setError('يرجى إدخال البريد الإلكتروني وكلمة المرور');
+    // Check if account is locked
+    if (isLocked) {
+      setError(`تم تأمين الحساب. يرجى المحاولة مرة أخرى بعد ${Math.ceil(timeRemaining / 1000 / 60)} دقائق`);
+      return;
+    }
+
+    if (!password) {
+      setError('يرجى إدخال كلمة المرور');
       return;
     }
 
     try {
       setIsLoading(true);
       setError(null);
-      await login(email, password);
-      navigate('/dashboard');
+      
+      // Check the static password
+      if (password === STATIC_PASSWORD) {
+        // Reset attempts on successful login
+        setAttempts(0);
+        localStorage.setItem('loginAttempts', '0');
+        localStorage.removeItem('lockedUntil');
+        
+        // Use the existing authentication system - use admin@elsahm.com as a default email
+        await login('admin@elsahm.com', STATIC_PASSWORD);
+        navigate('/dashboard');
+      } else {
+        // Wrong password
+        const newAttempts = attempts + 1;
+        setAttempts(newAttempts);
+        localStorage.setItem('loginAttempts', newAttempts.toString());
+        
+        // Check if we need to lock the account
+        if (newAttempts >= MAX_ATTEMPTS) {
+          const lockTime = Date.now() + LOCKOUT_TIME;
+          setLockedUntil(lockTime);
+          localStorage.setItem('lockedUntil', lockTime.toString());
+          setError(`تم تأمين الحساب بسبب عدد محاولات كبير. يرجى المحاولة مرة أخرى بعد 3 دقائق`);
+        } else {
+          setError(`كلمة المرور خاطئة. محاولات متبقية: ${MAX_ATTEMPTS - newAttempts}`);
+        }
+      }
     } catch (err) {
-      setError('فشل تسجيل الدخول. يرجى التحقق من البريد الإلكتروني وكلمة المرور');
+      setError('فشل تسجيل الدخول. يرجى المحاولة مرة أخرى');
     } finally {
       setIsLoading(false);
     }
@@ -97,21 +171,13 @@ const Login: React.FC = () => {
             </Alert>
           )}
 
-          <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%', mt: 1 }}>
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              id="email"
-              label="البريد الإلكتروني"
-              name="email"
-              autoComplete="email"
-              autoFocus
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={isLoading}
-            />
+          {isLocked && (
+            <Alert severity="warning" sx={{ width: '100%', mb: 2 }}>
+              تم تأمين الحساب. يرجى الانتظار {Math.ceil(timeRemaining / 1000 / 60)} دقائق و {Math.ceil((timeRemaining / 1000) % 60)} ثواني
+            </Alert>
+          )}
 
+          <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%', mt: 1 }}>
             <TextField
               margin="normal"
               required
@@ -123,7 +189,7 @@ const Login: React.FC = () => {
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              disabled={isLoading}
+              disabled={Boolean(isLoading || isLocked)}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
@@ -145,14 +211,12 @@ const Login: React.FC = () => {
               variant="contained"
               color="primary"
               sx={{ mt: 3, mb: 2, py: 1.5 }}
-              disabled={isLoading}
+              disabled={Boolean(isLoading || isLocked)}
               startIcon={isLoading ? <CircularProgress size={20} /> : <LoginIcon />}
             >
               {isLoading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
             </Button>
           </Box>
-
-          {/* Theme toggle button removed */}
         </Paper>
       </Container>
     </Box>

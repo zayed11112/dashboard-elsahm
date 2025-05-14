@@ -81,11 +81,11 @@ const AnimatedContainer = styled(Box)(({ theme }) => ({
   }
 }));
 
-// Avatar estilizado
-const StyledAvatar = styled(Avatar)<{ isHovered: boolean }>(({ theme, isHovered }) => ({
+// Avatar estilizado - rename isHovered to data-hovered to prevent DOM warnings
+const StyledAvatar = styled(Avatar)<{ 'data-hovered': boolean }>(({ theme, 'data-hovered': hovered }) => ({
   zIndex: 1,
   transition: 'all 0.3s ease-in-out',
-  animation: isHovered ? `${pulse} 1.5s infinite` : 'none',
+  animation: hovered ? `${pulse} 1.5s infinite` : 'none',
   '&:hover': {
     transform: 'scale(1.05)',
     boxShadow: '0 0 15px rgba(255, 255, 255, 0.5)'
@@ -142,7 +142,7 @@ const AnimatedAvatar: React.FC<AnimatedAvatarProps> = ({
       <StyledAvatar
         src={src}
         alt={alt}
-        isHovered={isHovered}
+        data-hovered={isHovered}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={onClick}

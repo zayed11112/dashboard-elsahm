@@ -115,11 +115,11 @@ const ReservationDetails: React.FC = () => {
 
   // Format price
   const formatPrice = (price: number) => {
-    // تنسيق السعر بدون أصفار إضافية
-    return new Intl.NumberFormat('ar-SA', {
+    // تنسيق السعر بدون أصفار إضافية بالإنجليزية
+    return new Intl.NumberFormat('en-US', {
       style: 'decimal', // استخدام تنسيق عشري بدلاً من تنسيق العملة
       maximumFractionDigits: 0, // بدون كسور عشرية
-    }).format(price) + ' ج.م'; // إضافة رمز العملة يدوياً
+    }).format(price) + ' EGP'; // إضافة رمز العملة يدوياً
   };
 
   // Calculate duration in days

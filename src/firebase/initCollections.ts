@@ -42,7 +42,28 @@ export const initNotificationsCollection = async () => {
   }
 };
 
+// تهيئة جدول معاملات الرصيد إذا لم يكن موجودًا
+export const initBalanceTransactionsCollection = async () => {
+  try {
+    // تحقق مما إذا كانت معاملات الرصيد موجودة بالفعل
+    const transactionsRef = collection(db, 'balance_transactions');
+    const q = query(transactionsRef, limit(1));
+    const snapshot = await getDocs(q);
+
+    // إذا لم تكن هناك معاملات، قم بإنشاء الجدول (لا نحتاج إلى إضافة معاملات افتراضية)
+    if (snapshot.empty) {
+      console.log('تهيئة جدول معاملات الرصيد...');
+      console.log('تم تهيئة جدول معاملات الرصيد بنجاح');
+    } else {
+      console.log('تم العثور على جدول معاملات الرصيد بالفعل');
+    }
+  } catch (error) {
+    console.error('خطأ في تهيئة جدول معاملات الرصيد:', error);
+  }
+};
+
 // Función para inicializar todas las colecciones
 export const initAllCollections = async () => {
   await initNotificationsCollection();
+  await initBalanceTransactionsCollection();
 };

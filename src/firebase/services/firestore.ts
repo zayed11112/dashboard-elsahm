@@ -16,6 +16,7 @@ import {
   DocumentSnapshot
 } from 'firebase/firestore';
 import { db } from '../config';
+import { checkoutRequestService, CheckoutRequest } from './checkoutRequests';
 
 // Interfaces para los tipos de datos
 export interface Property {
@@ -463,6 +464,10 @@ export const reservationService = {
   }
 };
 
+// Exportar el servicio de checkout requests
+export { checkoutRequestService };
+export type { CheckoutRequest };
+
 // Servicios para el dashboard
 export const dashboardService = {
   // Obtener estadísticas del dashboard
@@ -472,6 +477,7 @@ export const dashboardService = {
     reservationsCount: number;
     pendingReservationsCount: number;
     revenue: number;
+    checkoutRequestsCount: number;
   }> => {
     // Obtener conteo de propiedades
     const propertiesSnapshot = await getDocs(collection(db, 'apartments'));
@@ -486,6 +492,10 @@ export const dashboardService = {
     const reservations = convertCollection<Reservation>(reservationsSnapshot);
     const reservationsCount = reservationsSnapshot.size;
 
+    // Obtener conteo de checkout requests
+    const checkoutRequestsSnapshot = await getDocs(collection(db, 'checkout_requests_backup'));
+    const checkoutRequestsCount = checkoutRequestsSnapshot.size;
+
     // Obtener conteo de reservaciones pendientes
     const pendingReservationsCount = reservations.filter(r => r.status === 'pending').length;
 
@@ -499,7 +509,8 @@ export const dashboardService = {
       usersCount,
       reservationsCount,
       pendingReservationsCount,
-      revenue
+      revenue,
+      checkoutRequestsCount
     };
   },
 

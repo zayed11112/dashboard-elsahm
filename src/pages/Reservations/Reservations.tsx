@@ -216,11 +216,11 @@ const Reservations: React.FC = () => {
 
   // Format price
   const formatPrice = (price: number) => {
-    // تنسيق السعر بدون أصفار إضافية
-    return new Intl.NumberFormat('ar-SA', {
+    // تنسيق السعر بدون أصفار إضافية بالإنجليزية
+    return new Intl.NumberFormat('en-US', {
       style: 'decimal', // استخدام تنسيق عشري بدلاً من تنسيق العملة
       maximumFractionDigits: 0, // بدون كسور عشرية
-    }).format(price) + ' ج.م'; // إضافة رمز العملة يدوياً
+    }).format(price) + ' EGP'; // إضافة رمز العملة يدوياً
   };
 
   // Get status color
@@ -286,7 +286,7 @@ const Reservations: React.FC = () => {
   };
 
   return (
-    <Layout title="إدارة الحجوزات">
+    <Layout title="الحجوزات">
       <Box sx={{ p: 3 }}>
         {/* Error Alert */}
         {error && (
@@ -360,17 +360,19 @@ const Reservations: React.FC = () => {
 
             <Box>
               <Tooltip title="تحديث البيانات">
-                <IconButton
-                  onClick={refreshReservations}
-                  disabled={loading}
-                  sx={{
-                    mr: 1,
-                    backgroundColor: `${palette.primary.main}15`,
-                    '&:hover': { backgroundColor: `${palette.primary.main}25` }
-                  }}
-                >
-                  {loading ? <CircularProgress size={24} /> : <RefreshIcon />}
-                </IconButton>
+                <span>
+                  <IconButton
+                    onClick={refreshReservations}
+                    disabled={loading}
+                    sx={{
+                      mr: 1,
+                      backgroundColor: `${palette.primary.main}15`,
+                      '&:hover': { backgroundColor: `${palette.primary.main}25` }
+                    }}
+                  >
+                    {loading ? <CircularProgress size={24} /> : <RefreshIcon />}
+                  </IconButton>
+                </span>
               </Tooltip>
 
               <Button

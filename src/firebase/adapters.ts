@@ -2,7 +2,8 @@ import { Timestamp } from 'firebase/firestore';
 import {
   Property as FirebaseProperty,
   User as FirebaseUser,
-  Reservation as FirebaseReservation
+  Reservation as FirebaseReservation,
+  CheckoutRequest as FirebaseCheckoutRequest
 } from './services/firestore';
 
 // Función para formatear fechas de Firestore
@@ -130,6 +131,32 @@ export const dashboardAdapters = {
       id: property.id,
       name: property.name,
       reservationsCount: property.reservationsCount,
+    };
+  },
+
+  // Adaptar solicitudes de checkout para el dashboard
+  adaptCheckoutRequest: (request: FirebaseCheckoutRequest): any => {
+    return {
+      id: request.id || '',
+      propertyId: request.property_id || '',
+      propertyName: request.property_name || 'عقار غير معروف',
+      customerName: request.customer_name || '',
+      customerPhone: request.customer_phone || '',
+      universityId: request.university_id || '',
+      college: request.college || '',
+      status: request.status || 'جاري المعالجة',
+      commission: request.commission || 0,
+      deposit: request.deposit || 0,
+      propertyPrice: request.property_price || 0,
+      userId: request.user_id || '',
+      createdAt: request.created_at instanceof Timestamp
+        ? request.created_at.toDate().toLocaleDateString('ar-SA')
+        : (request.created_at as Date).toLocaleDateString('ar-SA'),
+      updatedAt: request.updated_at instanceof Timestamp
+        ? request.updated_at.toDate().toLocaleDateString('ar-SA')
+        : request.updated_at
+          ? (request.updated_at as Date).toLocaleDateString('ar-SA')
+          : new Date().toLocaleDateString('ar-SA'),
     };
   }
 };

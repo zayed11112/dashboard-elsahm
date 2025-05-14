@@ -9,15 +9,18 @@ import PrivateRoute from './components/PrivateRoute';
 // Import pages
 import Login from './pages/Login/Login';
 import SupabaseLogin from './pages/SupabaseLogin';
-import Dashboard from './pages/Dashboard/Dashboard';
+import Dashboard from './pages/Dashboard';
 import Properties from './pages/Properties/Properties';
 import PropertyForm from './pages/Properties/PropertyForm';
 import Users from './pages/Users/Users';
 import UserForm from './pages/Users/UserForm';
-import Reservations from './pages/Reservations/Reservations';
-import ReservationDetails from './pages/Reservations/ReservationDetails';
+import Categories from './pages/Categories/Categories';
 import Owners from './pages/Owners/Owners';
 import OwnerDetails from './pages/Owners/OwnerDetails';
+import CheckoutRequests from './pages/CheckoutRequests/CheckoutRequests';
+import AddBalance from './pages/AddBalance/AddBalance';
+import PaymentMethods from './pages/PaymentMethods/PaymentMethods';
+import PaymentRequests from './pages/PaymentRequests/PaymentRequests';
 
 function App() {
   // Inicializar colecciones al cargar la aplicación
@@ -52,13 +55,24 @@ function App() {
                 <Route path="/users/new" element={<UserForm />} />
                 <Route path="/users/:id" element={<UserForm />} />
 
-                {/* Reservations routes */}
-                <Route path="/reservations" element={<Reservations />} />
-                <Route path="/reservations/:id" element={<ReservationDetails />} />
+                {/* Categories routes */}
+                <Route path="/categories" element={<Categories />} />
 
                 {/* Owners routes */}
                 <Route path="/owners" element={<Owners />} />
                 <Route path="/owners/:id" element={<OwnerDetails />} />
+
+                {/* Checkout Requests routes */}
+                <Route path="/checkout-requests" element={<CheckoutRequests />} />
+                
+                {/* Add Balance route */}
+                <Route path="/add-balance" element={<AddBalance />} />
+                
+                {/* Payment Methods route */}
+                <Route path="/payment-methods" element={<PaymentMethods />} />
+
+                {/* Payment Requests route */}
+                <Route path="/payment-requests" element={<PaymentRequests />} />
               </Route>
 
               {/* Fallback route */}

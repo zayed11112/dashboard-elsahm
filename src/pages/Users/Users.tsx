@@ -224,7 +224,7 @@ const Users: React.FC = () => {
 
   // Format currency
   const formatCurrency = (amount: number) => {
-    return `${amount.toLocaleString()} جنيه`;
+    return `${amount.toLocaleString('en-US')} EGP`;
   };
 
   // Refresh users data
@@ -251,7 +251,7 @@ const Users: React.FC = () => {
   };
 
   return (
-    <Layout title="إدارة المستخدمين">
+    <Layout title="المستخدمين">
       <Box sx={{ p: 3 }}>
         {/* Error Alert */}
         {error && (
@@ -324,17 +324,19 @@ const Users: React.FC = () => {
 
             <Box>
               <Tooltip title="تحديث البيانات">
-                <IconButton
-                  onClick={refreshUsers}
-                  disabled={loading}
-                  sx={{
-                    mr: 1,
-                    backgroundColor: `${palette.primary.main}15`,
-                    '&:hover': { backgroundColor: `${palette.primary.main}25` }
-                  }}
-                >
-                  {loading ? <CircularProgress size={24} /> : <RefreshIcon />}
-                </IconButton>
+                <span>
+                  <IconButton
+                    onClick={refreshUsers}
+                    disabled={loading}
+                    sx={{
+                      mr: 1,
+                      backgroundColor: `${palette.primary.main}15`,
+                      '&:hover': { backgroundColor: `${palette.primary.main}25` }
+                    }}
+                  >
+                    {loading ? <CircularProgress size={24} /> : <RefreshIcon />}
+                  </IconButton>
+                </span>
               </Tooltip>
 
               <Button

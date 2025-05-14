@@ -1,26 +1,38 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Typography,
   Box,
-  IconButton,
   Button,
   CircularProgress,
   Alert,
   useTheme,
   useMediaQuery,
   Paper,
+  Grid,
+  Chip,
+  Divider,
+  IconButton,
+  Tooltip,
+  Card,
+  CardContent,
 } from '@mui/material';
 import {
-  ArrowForward as ArrowForwardIcon,
-  BookOnline as BookOnlineIcon,
   Dashboard as DashboardIcon,
-  Person as PersonIcon,
+  Receipt as ReceiptIcon,
+  Add as AddIcon,
   Home as HomeIcon,
-  Payments as PaymentsIcon,
-  RecentActors as RecentActorsIcon,
-  School as SchoolIcon,
-  PieChart as PieChartIcon,
+  Person as PersonIcon,
+  Category as CategoryIcon,
+  PersonAdd as PersonAddIcon,
+  Payment as PaymentIcon,
+  AccountBalanceWallet as WalletIcon,
+  CreditCard as CreditCardIcon,
+  Refresh as RefreshIcon,
+  TrendingUp as TrendingUpIcon,
+  BarChart as BarChartIcon,
+  AttachMoney as AttachMoneyIcon,
+  MoneyOff as MoneyOffIcon,
 } from '@mui/icons-material';
 import {
   PropertySearchIcon,
@@ -28,41 +40,17 @@ import {
   BookingConfirmIcon,
   CommissionIcon
 } from '../../components/icons/CustomIcons';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement,
-} from 'chart.js';
 import Layout from '../../components/Layout';
-import { dashboardApi } from '../../services/api';
+import { dashboardApi, checkoutRequestsApi } from '../../services/api';
 import { supabasePropertiesApi } from '../../services/supabaseApi';
+import { categoriesApi } from '../../services/categoriesApi';
 import {
   ResponsiveContainer,
   ResponsiveGrid,
   StatCard,
-  ChartCard,
-  ListCard,
+  QuickActionCard,
 } from '../../components/responsive';
 import { palette } from '../../theme/palette';
-
-// Importar Pie chart con carga diferida
-const LazyPieChart = lazy(() => import('react-chartjs-2').then(module => ({ default: module.Pie })));
-
-// Register ChartJS components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement
-);
 
 // Define types
 interface DashboardStats {
@@ -71,64 +59,66 @@ interface DashboardStats {
   reservationsCount: number;
   pendingReservationsCount: number;
   revenue: number;
-  totalCommission?: number; // Suma total de comisiones
+  totalCommission?: number;
+  checkoutRequestsCount?: number;
+  pendingCheckoutRequestsCount?: number;
+  confirmedCheckoutRequestsCount?: number;
+  checkoutCommissionTotal?: number;
+  categoriesCount?: number;
+  // Stats for payment-related items
+  paymentRequestsCount?: number;
+  pendingPaymentRequestsCount?: number;
+  completedPaymentRequestsCount?: number;
+  totalPaymentAmount?: number;
 }
 
-interface RecentReservation {
-  id: string;
-  propertyName: string;
-  userName: string;
-  status: 'pending' | 'approved' | 'rejected';
-  createdAt: string;
-  totalPrice: number;
-}
-
-interface RecentUser {
-  id: string;
-  name: string;
-  email: string;
-  createdAt: string;
-}
-
-interface TopProperty {
-  id: string;
-  name: string;
-  reservationsCount: number;
-}
-
-
-
-// تم استبدال مكون StatCard بالمكون المتجاوب من المكتبة
+// Create a cache object for dashboard data
+const CACHE_EXPIRY_TIME = 5 * 60 * 1000; // 5 minutes
+let dashboardDataCache = {
+  data: null as DashboardStats | null,
+  timestamp: 0,
+};
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [recentReservations, setRecentReservations] = useState<RecentReservation[]>([]);
-  const [recentProperties, setRecentProperties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // دالة لجلب بيانات لوحة التحكم
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async (forceRefresh = false) => {
     try {
+      // Check if we have valid cached data
+      const now = Date.now();
+      if (!forceRefresh && 
+          dashboardDataCache.data && 
+          (now - dashboardDataCache.timestamp) < CACHE_EXPIRY_TIME) {
+        console.log('Using cached dashboard data');
+        setStats(dashboardDataCache.data);
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setError(null);
 
-      console.time('dashboard-data-fetch'); // بدء قياس الوقت
+      // Use a unique timer name with timestamp
+      const timerId = `dashboard-data-fetch-${Date.now()}`;
+      console.time(timerId);
 
-      // جلب جميع البيانات في وقت واحد
+      // جلب البيانات الأساسية بشكل متوازي
       const [
         statsRes,
-        reservationsRes,
         propertiesWithCommissionRes,
-        recentPropertiesRes
+        categoriesRes,
+        checkoutRequestsResponse,
       ] = await Promise.all([
         dashboardApi.getStats(),
-        dashboardApi.getRecentReservations(),
-        supabasePropertiesApi.getAll(), // الحصول على العقارات لحساب العمولات
-        supabasePropertiesApi.getAll({ limit: 3 }) // الحصول على أحدث 3 عقارات
+        supabasePropertiesApi.getAll(), 
+        categoriesApi.getAll(),
+        checkoutRequestsApi.getAll()
       ]);
 
       // حساب إجمالي العمولات
@@ -137,105 +127,89 @@ const Dashboard: React.FC = () => {
         0
       );
 
-      // تحديث الإحصائيات مع إجمالي العمولات
+      // عدد الأقسام
+      const categoriesCount = categoriesRes.data.length;
+      
+      // معالجة بيانات طلبات الحجز
+      const checkoutRequests = checkoutRequestsResponse.data;
+      const pendingCheckoutRequestsCount = checkoutRequests.filter(r => r.status === 'جاري المعالجة').length;
+      const confirmedCheckoutRequestsCount = checkoutRequests.filter(r => r.status === 'مؤكد').length;
+      const checkoutCommissionTotal = checkoutRequests
+        .filter(r => r.status === 'مؤكد')
+        .reduce((sum, r) => sum + (r.commission || 0), 0);
+
+      // Mock data for payment requests
+      const paymentRequestsCount = 15;
+      const pendingPaymentRequestsCount = 8;
+      const completedPaymentRequestsCount = 7;
+      const totalPaymentAmount = 45000;
+
+      // تحديث الإحصائيات
       const updatedStats: DashboardStats = {
         ...statsRes.data,
-        totalCommission
+        totalCommission,
+        categoriesCount,
+        propertiesCount: propertiesWithCommissionRes.data.length,
+        checkoutRequestsCount: checkoutRequests.length,
+        pendingCheckoutRequestsCount,
+        confirmedCheckoutRequestsCount,
+        checkoutCommissionTotal,
+        // Add payment requests stats
+        paymentRequestsCount,
+        pendingPaymentRequestsCount,
+        completedPaymentRequestsCount,
+        totalPaymentAmount
       };
 
-      // تعيين البيانات في الحالة
-      setStats(updatedStats);
-      setRecentReservations(reservationsRes.data);
-      setRecentProperties(recentPropertiesRes.data.slice(0, 3)); // أحدث 3 عقارات
+      // تخزين البيانات في الذاكرة المؤقتة
+      dashboardDataCache = {
+        data: updatedStats,
+        timestamp: now
+      };
 
-      // تحديث حالة التحميل
+      // تعيين البيانات
+      setStats(updatedStats);
       setLoading(false);
 
-      console.timeEnd('dashboard-data-fetch'); // إنهاء قياس الوقت
+      console.timeEnd(timerId);
       console.log('Dashboard data loaded successfully');
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
       setError('حدث خطأ أثناء تحميل البيانات. يرجى المحاولة مرة أخرى.');
       setLoading(false);
     }
-  };
+  }, []);
 
   // جلب البيانات عند تحميل الصفحة
   useEffect(() => {
     fetchDashboardData();
-  }, []);
-
-  // Prepare chart data with improved visuals
-
-  const pieChartData = {
-    labels: ['قيد الانتظار', 'تمت الموافقة', 'مرفوضة'],
-    datasets: [
-      {
-        data: [
-          stats?.pendingReservationsCount || 0,
-          (stats?.reservationsCount || 0) - (stats?.pendingReservationsCount || 0) - 5, // Approved count
-          5, // Rejected count
-        ],
-        backgroundColor: [
-          'rgba(255, 152, 0, 0.8)',  // Amber for pending
-          'rgba(76, 175, 80, 0.8)',  // Green for approved
-          'rgba(244, 67, 54, 0.8)',  // Red for rejected
-        ],
-        borderColor: [
-          'rgba(255, 152, 0, 1)',
-          'rgba(76, 175, 80, 1)',
-          'rgba(244, 67, 54, 1)',
-        ],
-        borderWidth: 2,
-        hoverOffset: 10,
-      },
-    ],
-  };
-
-
-
-  // Get status color
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return 'success.main';
-      case 'pending':
-        return 'warning.main';
-      case 'rejected':
-        return 'error.main';
-      default:
-        return 'text.secondary';
-    }
-  };
-
-  // Get status text
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return 'تمت الموافقة';
-      case 'pending':
-        return 'قيد الانتظار';
-      case 'rejected':
-        return 'مرفوض';
-      default:
-        return status;
-    }
-  };
+    
+    // إعداد تحديث تلقائي للبيانات
+    const refreshInterval = setInterval(() => {
+      fetchDashboardData(true);
+    }, CACHE_EXPIRY_TIME);
+    
+    return () => clearInterval(refreshInterval);
+  }, [fetchDashboardData]);
 
   // Format price
   const formatPrice = (price: number) => {
-    // تنسيق السعر بدون أصفار إضافية
-    return new Intl.NumberFormat('ar-SA', {
-      style: 'decimal', // استخدام تنسيق عشري بدلاً من تنسيق العملة
-      maximumFractionDigits: 0, // بدون كسور عشرية
-    }).format(price) + ' ج.م'; // إضافة رمز العملة يدوياً
+    return new Intl.NumberFormat('en-US', {
+      style: 'decimal',
+      maximumFractionDigits: 0,
+    }).format(price) + ' EGP';
+  };
+
+  // Handle manual refresh
+  const handleRefresh = () => {
+    fetchDashboardData(true);
   };
 
   if (loading) {
     return (
       <Layout title="لوحة التحكم">
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-          <CircularProgress />
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+          <CircularProgress size={60} thickness={4} />
         </Box>
       </Layout>
     );
@@ -244,9 +218,37 @@ const Dashboard: React.FC = () => {
   if (error) {
     return (
       <Layout title="لوحة التحكم">
-        <Box sx={{ p: 3 }}>
-          <Typography color="error">{error}</Typography>
-          <Button variant="contained" onClick={() => window.location.reload()} sx={{ mt: 2 }}>
+        <Box sx={{ 
+          p: 4, 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center',
+          justifyContent: 'center', 
+          height: '50vh' 
+        }}>
+          <Alert 
+            severity="error" 
+            sx={{
+              mb: 3,
+              width: '100%',
+              maxWidth: 600,
+              borderRadius: 2,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+            }}
+          >
+            <Typography variant="body1">{error}</Typography>
+          </Alert>
+          <Button 
+            variant="contained" 
+            onClick={handleRefresh} 
+            sx={{ 
+              mt: 2,
+              px: 4,
+              py: 1,
+              borderRadius: 2,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            }}
+          >
             إعادة المحاولة
           </Button>
         </Box>
@@ -254,322 +256,644 @@ const Dashboard: React.FC = () => {
     );
   }
 
-
-
   return (
     <Layout title="لوحة التحكم">
-      <Box sx={{ p: isMobile ? 2 : 3 }}>
-        {/* Header Section with Gradient Background */}
-        <Paper
-          elevation={3}
+      {error && (
+        <Alert
+          severity="error"
           sx={{
-            p: isMobile ? 3 : 4,
-            mb: 4,
+            mb: 3,
             borderRadius: 2,
-            background: `linear-gradient(135deg, ${palette.primary.main}15, ${palette.primary.light}05)`,
-            backdropFilter: 'blur(10px)',
-            border: `1px solid ${palette.primary.light}30`,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
           }}
         >
-          <ResponsiveContainer>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Box>
-                <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-                  لوحة التحكم
-                </Typography>
-                <Typography variant="body1" color="text.secondary">
-                  مرحباً بك في لوحة تحكم السهم للتسكين
-                </Typography>
-              </Box>
+          {error}
+        </Alert>
+      )}
+
+      <Box sx={{ position: 'relative' }}>
+        {/* Header with refresh button */}
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            mb: 4
+          }}
+        >
+          <Box>
+            <Typography 
+              variant="h4" 
+              sx={{ 
+                fontWeight: 800, 
+                fontSize: { xs: '1.8rem', md: '2.2rem' },
+                background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                backgroundClip: 'text',
+                textFillColor: 'transparent',
+                marginBottom: 1
+              }}
+            >
+              مرحباً بك في لوحة التحكم
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              اطلع على أحدث الإحصائيات وأدر نظامك بسهولة وفعالية
+            </Typography>
+          </Box>
+          
+          <Tooltip title="تحديث البيانات">
+            <IconButton 
+              onClick={handleRefresh} 
+              color="primary"
+              sx={{ 
+                bgcolor: 'rgba(33, 150, 243, 0.1)', 
+                borderRadius: 2,
+                '&:hover': {
+                  bgcolor: 'rgba(33, 150, 243, 0.2)',
+                }
+              }}
+            >
+              <RefreshIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        {/* Overview Cards */}
+        <Box sx={{ mb: 5 }}>
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card 
+                elevation={0} 
+                sx={{ 
+                  borderRadius: 3, 
+                  boxShadow: '0 5px 20px rgba(25,118,210,0.08)',
+                  background: 'linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%)',
+                  height: '100%'
+                }}
+              >
+                <CardContent sx={{ p: 3 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Typography 
+                      variant="h5" 
+                      sx={{ fontWeight: 700, color: palette.primary.main }}
+                    >
+                      {stats?.propertiesCount || 0}
+                    </Typography>
+                    <IconButton 
+                      sx={{ 
+                        bgcolor: palette.primary.main, 
+                        width: 40, 
+                        height: 40,
+                        color: 'white'
+                      }}
+                    >
+                      <HomeIcon />
+                    </IconButton>
+                  </Box>
+                  <Typography variant="body1" sx={{ mt: 2, fontWeight: 600 }}>العقارات</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    إجمالي العقارات المسجلة في النظام
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={3}>
+              <Card 
+                elevation={0} 
+                sx={{ 
+                  borderRadius: 3, 
+                  boxShadow: '0 5px 20px rgba(25,118,210,0.08)',
+                  background: 'linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%)',
+                  height: '100%'
+                }}
+              >
+                <CardContent sx={{ p: 3 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Typography 
+                      variant="h5" 
+                      sx={{ fontWeight: 700, color: palette.success.main }}
+                    >
+                      {stats?.usersCount || 0}
+                    </Typography>
+                    <IconButton 
+                      sx={{ 
+                        bgcolor: palette.success.main, 
+                        width: 40, 
+                        height: 40,
+                        color: 'white'
+                      }}
+                    >
+                      <PersonIcon />
+                    </IconButton>
+                  </Box>
+                  <Typography variant="body1" sx={{ mt: 2, fontWeight: 600 }}>المستخدمين</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    إجمالي المستخدمين المسجلين
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={3}>
+              <Card 
+                elevation={0} 
+                sx={{ 
+                  borderRadius: 3, 
+                  boxShadow: '0 5px 20px rgba(25,118,210,0.08)',
+                  background: 'linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%)',
+                  height: '100%'
+                }}
+              >
+                <CardContent sx={{ p: 3 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Typography 
+                      variant="h5" 
+                      sx={{ fontWeight: 700, color: palette.warning.main }}
+                    >
+                      {stats?.checkoutRequestsCount || 0}
+                    </Typography>
+                    <IconButton 
+                      sx={{ 
+                        bgcolor: palette.warning.main, 
+                        width: 40, 
+                        height: 40,
+                        color: 'white'
+                      }}
+                    >
+                      <ReceiptIcon />
+                    </IconButton>
+                  </Box>
+                  <Typography variant="body1" sx={{ mt: 2, fontWeight: 600 }}>طلبات الحجز</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    إجمالي طلبات الحجز
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={3}>
+              <Card 
+                elevation={0} 
+                sx={{ 
+                  borderRadius: 3, 
+                  boxShadow: '0 5px 20px rgba(25,118,210,0.08)',
+                  background: 'linear-gradient(135deg, #E1F5FE 0%, #B3E5FC 100%)',
+                  height: '100%'
+                }}
+              >
+                <CardContent sx={{ p: 3 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Typography 
+                      variant="h5" 
+                      sx={{ fontWeight: 700, color: palette.info.main, direction: 'ltr' }}
+                    >
+                      {formatPrice(stats?.totalCommission || 0)}
+                    </Typography>
+                    <IconButton 
+                      sx={{ 
+                        bgcolor: palette.info.main, 
+                        width: 40, 
+                        height: 40,
+                        color: 'white'
+                      }}
+                    >
+                      <AttachMoneyIcon />
+                    </IconButton>
+                  </Box>
+                  <Typography variant="body1" sx={{ mt: 2, fontWeight: 600 }}>إجمالي العمولات</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    العمولات من كافة المصادر
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        </Box>
+
+        {/* الإضافات السريعة */}
+        <Paper 
+          elevation={0} 
+          sx={{ 
+            p: { xs: 3, sm: 4 }, 
+            mb: 5,
+            backgroundImage: 'linear-gradient(to bottom right, rgba(255,255,255,0.9), rgba(255,255,255,0.8))',
+            backdropFilter: 'blur(20px)',
+            borderRadius: 4,
+            border: '1px solid rgba(0,0,0,0.05)',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.05)'
+          }}
+        >
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between', 
+              alignItems: { xs: 'flex-start', sm: 'center' }, 
+              mb: 4 
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 2, sm: 0 } }}>
               <Box
-                sx={{
+                sx={{ 
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  width: 60,
-                  height: 60,
-                  borderRadius: '50%',
-                  background: palette.gradients.primary,
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                  width: { xs: 42, sm: 50 },
+                  height: { xs: 42, sm: 50 },
+                  backgroundImage: 'linear-gradient(45deg, #2196F3, #21CBF3)',
+                  borderRadius: '14px',
+                  boxShadow: '0 5px 15px rgba(33, 150, 243, 0.2)',
+                  mr: 2 
                 }}
               >
-                <DashboardIcon sx={{ fontSize: 32, color: '#fff' }} />
+                <AddIcon 
+                  sx={{ 
+                    color: '#fff', 
+                    fontSize: { xs: 24, sm: 28 }
+                  }} 
+                />
+              </Box>
+              <Box>
+                <Typography 
+                  variant="h5" 
+                  sx={{ 
+                    fontWeight: 700,
+                    position: 'relative',
+                    display: 'inline-block',
+                    fontSize: { xs: '1.25rem', sm: '1.5rem' }
+                  }}
+                >
+                  الإضافات السريعة
+                </Typography>
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary"
+                  sx={{ mt: 0.5 }}
+                >
+                  أضف عناصر جديدة وقم بإدارة النظام بشكل فعّال
+                </Typography>
               </Box>
             </Box>
-          </ResponsiveContainer>
+
+            <Chip 
+              label="إدارة سريعة" 
+              color="primary" 
+              variant="outlined" 
+              sx={{ 
+                borderRadius: '10px', 
+                py: 0.5, 
+                px: 1, 
+                fontWeight: 600,
+                bgcolor: 'rgba(33, 150, 243, 0.05)'
+              }} 
+            />
+          </Box>
+
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={6} md={3}>
+              <QuickActionCard
+                title="إضافة عقار جديد"
+                description=""
+                icon={<HomeIcon />}
+                onClick={() => navigate('/properties/new')}
+                color={palette.primary.main}
+                gradient="linear-gradient(to bottom right, rgba(33, 150, 243, 0.05), rgba(33, 150, 243, 0.1))"
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={3}>
+              <QuickActionCard
+                title="إضافة مالك جديد"
+                description=""
+                icon={<PersonIcon />}
+                onClick={() => navigate('/owners')}
+                color={palette.success.main}
+                gradient="linear-gradient(to bottom right, rgba(76, 175, 80, 0.05), rgba(76, 175, 80, 0.1))"
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={3}>
+              <QuickActionCard
+                title="إضافة قسم جديد"
+                description=""
+                icon={<CategoryIcon />}
+                onClick={() => navigate('/categories')}
+                color={palette.warning.main}
+                gradient="linear-gradient(to bottom right, rgba(255, 152, 0, 0.05), rgba(255, 152, 0, 0.1))"
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={3}>
+              <QuickActionCard
+                title="إضافة مستخدم جديد"
+                description=""
+                icon={<PersonAddIcon />}
+                onClick={() => navigate('/users/new')}
+                color={palette.secondary.main}
+                gradient="linear-gradient(to bottom right, rgba(156, 39, 176, 0.05), rgba(156, 39, 176, 0.1))"
+              />
+            </Grid>
+          </Grid>
         </Paper>
 
-        {error && (
-          <Alert
-            severity="error"
-            sx={{
-              mb: 3,
-              borderRadius: 2,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+        {/* قسم إدارة المدفوعات - الجديد */}
+        <Paper 
+          elevation={0} 
+          sx={{ 
+            p: { xs: 3, sm: 4 }, 
+            mb: 5,
+            backgroundImage: 'linear-gradient(to bottom right, rgba(255,255,255,0.9), rgba(255,255,255,0.8))',
+            backdropFilter: 'blur(20px)',
+            borderRadius: 4,
+            border: '1px solid rgba(0,0,0,0.05)',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.05)'
+          }}
+        >
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between', 
+              alignItems: { xs: 'flex-start', sm: 'center' }, 
+              mb: 4 
             }}
           >
-            {error}
-          </Alert>
-        )}
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 2, sm: 0 } }}>
+              <Box
+                sx={{ 
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: { xs: 42, sm: 50 },
+                  height: { xs: 42, sm: 50 },
+                  backgroundImage: 'linear-gradient(45deg, #7B1FA2, #9C27B0)',
+                  borderRadius: '14px',
+                  boxShadow: '0 5px 15px rgba(156, 39, 176, 0.2)',
+                  mr: 2 
+                }}
+              >
+                <PaymentIcon 
+                  sx={{ 
+                    color: '#fff', 
+                    fontSize: { xs: 24, sm: 28 }
+                  }} 
+                />
+              </Box>
+              <Box>
+                <Typography 
+                  variant="h5" 
+                  sx={{ 
+                    fontWeight: 700,
+                    position: 'relative',
+                    display: 'inline-block',
+                    fontSize: { xs: '1.25rem', sm: '1.5rem' }
+                  }}
+                >
+                  إدارة المدفوعات
+                </Typography>
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary"
+                  sx={{ mt: 0.5 }}
+                >
+                  إدارة طرق الدفع وطلبات شحن الرصيد والعمليات المالية
+                </Typography>
+              </Box>
+            </Box>
 
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-            <CircularProgress />
+            <Chip 
+              label={`${stats?.pendingPaymentRequestsCount || 0} طلب جديد`} 
+              color="secondary" 
+              variant="outlined" 
+              sx={{ 
+                borderRadius: '10px', 
+                py: 0.5, 
+                px: 1, 
+                fontWeight: 600,
+                bgcolor: 'rgba(156, 39, 176, 0.05)'
+              }} 
+            />
           </Box>
-        ) : (
-          <>
-            {/* Stats Cards */}
-            <ResponsiveContainer>
-              <ResponsiveGrid container spacing={3} sx={{ mb: 4 }}>
-                <ResponsiveGrid item xs={12} sm={6} md={3}>
-                  <StatCard
-                    title="العقارات"
-                    value={stats?.propertiesCount ?? 0}
-                    icon={<PropertySearchIcon sx={{ fontSize: 40 }} />}
-                    color={palette.primary.main}
-                    trend={5}
-                    trendLabel="منذ الشهر الماضي"
-                    onClick={() => navigate('/properties')}
-                    gradient={palette.gradients.primary}
-                  />
-                </ResponsiveGrid>
-                <ResponsiveGrid item xs={12} sm={6} md={3}>
-                  <StatCard
-                    title="المستخدمين"
-                    value={stats?.usersCount ?? 0}
-                    icon={<UsersGroupIcon sx={{ fontSize: 40 }} />}
-                    color={palette.success.main}
-                    trend={12}
-                    trendLabel="منذ الشهر الماضي"
-                    onClick={() => navigate('/users')}
-                    gradient={palette.gradients.success}
-                  />
-                </ResponsiveGrid>
-                <ResponsiveGrid item xs={12} sm={6} md={3}>
-                  <StatCard
-                    title="الحجوزات"
-                    value={stats?.reservationsCount ?? 0}
-                    icon={<BookingConfirmIcon sx={{ fontSize: 40 }} />}
-                    color={palette.warning.main}
-                    trend={-3}
-                    trendLabel="منذ الشهر الماضي"
-                    onClick={() => navigate('/reservations')}
-                    gradient={palette.gradients.warning}
-                  />
-                </ResponsiveGrid>
-                <ResponsiveGrid item xs={12} sm={6} md={3}>
-                  <StatCard
-                    title="العمولات"
-                    value={formatPrice(stats?.totalCommission ?? 0)}
-                    icon={<CommissionIcon sx={{ fontSize: 40 }} />}
-                    color={palette.secondary.main}
-                    trend={8}
-                    trendLabel="منذ الشهر الماضي"
-                    subtitle="إجمالي العمولات"
-                    gradient={palette.gradients.secondary}
-                  />
-                </ResponsiveGrid>
-              </ResponsiveGrid>
-            </ResponsiveContainer>
 
-            {/* Charts and Tables */}
-            <ResponsiveContainer>
-              <ResponsiveGrid container spacing={3}>
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={6} md={4}>
+              <QuickActionCard
+                title="طرق الدفع"
+                description=""
+                icon={<CreditCardIcon />}
+                onClick={() => navigate('/payment-methods')}
+                color="#6A1B9A"
+                gradient="linear-gradient(to bottom right, rgba(106, 27, 154, 0.05), rgba(106, 27, 154, 0.1))"
+              />
+            </Grid>
 
+            <Grid item xs={12} sm={6} md={4}>
+              <QuickActionCard
+                title="طلبات شحن رصيد"
+                description={`${stats?.pendingPaymentRequestsCount || 0} قيد الانتظار`}
+                icon={<WalletIcon />}
+                onClick={() => navigate('/payment-requests')}
+                color="#8E24AA"
+                gradient="linear-gradient(to bottom right, rgba(142, 36, 170, 0.05), rgba(142, 36, 170, 0.1))"
+              />
+            </Grid>
 
-                {/* Reservation Status Chart */}
-                <ResponsiveGrid item xs={12} md={12}>
-                  <ChartCard
-                    title="حالة الحجوزات"
-                    subtitle="توزيع الحجوزات حسب الحالة"
-                    onViewAll={() => navigate('/reservations')}
-                    onRefresh={() => fetchDashboardData()}
-                    noData={!stats}
-                    height={320}
-                    gradient={palette.gradients.purple}
-                    icon={<PieChartIcon />}
-                  >
-                    <Box sx={{ p: 2, height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                      <Suspense fallback={<Box sx={{ textAlign: 'center', p: 3 }}>جاري تحميل الرسم البياني...</Box>}>
-                        <LazyPieChart
-                          data={pieChartData}
-                          options={{
-                          maintainAspectRatio: false,
-                          plugins: {
-                            legend: {
-                              position: 'right',
-                              labels: {
-                                font: {
-                                  size: 12,
-                                  family: 'Cairo, sans-serif'
-                                },
-                                color: theme.palette.text.primary,
-                                padding: 15,
-                                usePointStyle: true,
-                                pointStyle: 'circle'
-                              }
-                            },
-                            tooltip: {
-                              backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                              titleColor: theme.palette.text.primary,
-                              bodyColor: theme.palette.text.secondary,
-                              borderColor: theme.palette.divider,
-                              borderWidth: 1,
-                              padding: 12,
-                              boxWidth: 10,
-                              boxHeight: 10,
-                              usePointStyle: true,
-                              titleFont: {
-                                size: 14,
-                                family: 'Cairo, sans-serif'
-                              },
-                              bodyFont: {
-                                size: 12,
-                                family: 'Cairo, sans-serif'
-                              }
-                            }
-                          }
-                        }}
-                        />
-                      </Suspense>
-                    </Box>
-                  </ChartCard>
-                </ResponsiveGrid>
+            <Grid item xs={12} sm={6} md={4}>
+              <QuickActionCard
+                title="إضافة رصيد"
+                description=""
+                icon={<AttachMoneyIcon />}
+                onClick={() => navigate('/add-balance')}
+                color="#AB47BC"
+                gradient="linear-gradient(to bottom right, rgba(171, 71, 188, 0.05), rgba(171, 71, 188, 0.1))"
+              />
+            </Grid>
+          </Grid>
+        </Paper>
 
-                {/* Recent Reservations */}
-                <ResponsiveGrid item xs={12} md={6}>
-                  <ListCard
-                    title="أحدث الحجوزات"
-                    subtitle="آخر الحجوزات المضافة للنظام"
-                    onViewAll={() => navigate('/reservations')}
-                    onRefresh={() => fetchDashboardData()}
-                    loading={loading}
-                    noDataMessage="لا توجد حجوزات حديثة"
-                    icon={<BookingConfirmIcon />}
-                    gradient={palette.gradients.warning}
-                    items={recentReservations.map(reservation => ({
-                      id: reservation.id,
-                      primary: reservation.propertyName,
-                      secondary: (
-                        <React.Fragment>
-                          <Typography
-                            component="span"
-                            variant="body2"
-                            color="text.primary"
-                            sx={{ fontWeight: 500 }}
-                          >
-                            {reservation.userName}
-                          </Typography>
-                          {' — '}
-                          <Typography
-                            component="span"
-                            variant="body2"
-                            color={getStatusColor(reservation.status)}
-                            sx={{ fontWeight: 600 }}
-                          >
-                            {getStatusText(reservation.status)}
-                          </Typography>
-                          {' — '}
-                          <Typography
-                            component="span"
-                            variant="body2"
-                            color="text.secondary"
-                          >
-                            {formatPrice(reservation.totalPrice)}
-                          </Typography>
-                        </React.Fragment>
-                      ),
-                      avatar: reservation.propertyName.charAt(0),
-                      color: getStatusColor(reservation.status),
-                      action: (
-                        <IconButton
-                          edge="end"
-                          onClick={() => navigate(`/reservations/${reservation.id}`)}
-                          sx={{
-                            color: palette.primary.main,
-                            '&:hover': {
-                              backgroundColor: `${palette.primary.main}15`,
-                            }
-                          }}
-                        >
-                          <ArrowForwardIcon />
-                        </IconButton>
-                      ),
-                      onClick: () => navigate(`/reservations/${reservation.id}`),
-                    }))}
-                  />
-                </ResponsiveGrid>
+        {/* Decorative Separator */}
+        <Box 
+          sx={{ 
+            display: 'flex',
+            justifyContent: 'center',
+            width: '100%',
+            my: 5,
+            overflow: 'hidden'
+          }}
+        >
+          <Box
+            component="img"
+            src="/fasel.png"
+            alt="فاصل زخرفي"
+            sx={{
+              width: '100%',
+              maxWidth: 1200,
+              height: 'auto',
+              maxHeight: 80,
+              objectFit: 'contain',
+              opacity: 0.9
+            }}
+          />
+        </Box>
 
-                {/* Recent Properties */}
-                <ResponsiveGrid item xs={12} md={6}>
-                  <ListCard
-                    title="أحدث الشقق"
-                    subtitle="آخر الشقق المضافة للنظام"
-                    onViewAll={() => navigate('/properties')}
-                    onRefresh={() => fetchDashboardData()}
-                    loading={loading}
-                    noDataMessage="لا توجد شقق حديثة"
-                    icon={<PropertySearchIcon />}
-                    gradient={palette.gradients.primary}
-                    items={recentProperties.map(property => ({
-                      id: property.id,
-                      primary: property.name,
-                      secondary: (
-                        <React.Fragment>
-                          <Typography
-                            component="span"
-                            variant="body2"
-                            color="text.primary"
-                            sx={{ fontWeight: 500 }}
-                          >
-                            {property.address}
-                          </Typography>
-                          {' — '}
-                          <Typography
-                            component="span"
-                            variant="body2"
-                            color={property.is_available ? 'success.main' : 'error.main'}
-                            sx={{ fontWeight: 600 }}
-                          >
-                            {property.is_available ? 'متاح' : 'غير متاح'}
-                          </Typography>
-                          {' — '}
-                          <Typography
-                            component="span"
-                            variant="body2"
-                            color="text.secondary"
-                          >
-                            {formatPrice(property.price)}
-                          </Typography>
-                        </React.Fragment>
-                      ),
-                      avatar: property.name.charAt(0),
-                      color: palette.primary.main,
-                      action: (
-                        <IconButton
-                          edge="end"
-                          onClick={() => navigate(`/properties/${property.id}`)}
-                          sx={{
-                            color: palette.primary.main,
-                            '&:hover': {
-                              backgroundColor: `${palette.primary.main}15`,
-                            }
-                          }}
-                        >
-                          <ArrowForwardIcon />
-                        </IconButton>
-                      ),
-                      onClick: () => navigate(`/properties/${property.id}`),
-                    }))}
-                  />
-                </ResponsiveGrid>
-              </ResponsiveGrid>
-            </ResponsiveContainer>
-          </>
-        )}
+        {/* Stats Cards */}
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 3, sm: 4 },
+            mb: 4,
+            backgroundImage: 'linear-gradient(to bottom right, rgba(255,255,255,0.9), rgba(255,255,255,0.8))',
+            backdropFilter: 'blur(20px)',
+            borderRadius: 4,
+            border: '1px solid rgba(0,0,0,0.05)',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.05)'
+          }}
+        >
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between', 
+              alignItems: { xs: 'flex-start', sm: 'center' }, 
+              mb: 4 
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 2, sm: 0 } }}>
+              <Box
+                sx={{ 
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: { xs: 42, sm: 50 },
+                  height: { xs: 42, sm: 50 },
+                  backgroundImage: 'linear-gradient(45deg, #0288D1, #03A9F4)',
+                  borderRadius: '14px',
+                  boxShadow: '0 5px 15px rgba(3, 169, 244, 0.2)',
+                  mr: 2 
+                }}
+              >
+                <BarChartIcon 
+                  sx={{ 
+                    color: '#fff', 
+                    fontSize: { xs: 24, sm: 28 }
+                  }} 
+                />
+              </Box>
+              <Box>
+                <Typography 
+                  variant="h5" 
+                  sx={{ 
+                    fontWeight: 700,
+                    position: 'relative',
+                    display: 'inline-block',
+                    fontSize: { xs: '1.25rem', sm: '1.5rem' }
+                  }}
+                >
+                  إحصائيات النظام
+                </Typography>
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary"
+                  sx={{ mt: 0.5 }}
+                >
+                  نظرة عامة على أداء النظام والإحصائيات الرئيسية
+                </Typography>
+              </Box>
+            </Box>
+
+            <Tooltip title="عرض التقارير المفصلة">
+              <Button 
+                variant="outlined" 
+                color="info"
+                size="small"
+                startIcon={<TrendingUpIcon />}
+                sx={{ 
+                  borderRadius: '10px', 
+                  fontWeight: 600,
+                  bgcolor: 'rgba(3, 169, 244, 0.05)'
+                }}
+              >
+                عرض التقارير
+              </Button>
+            </Tooltip>
+          </Box>
+
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={6} md={3}>
+              <QuickActionCard
+                title="العقارات"
+                description={String(stats?.propertiesCount ?? 0)}
+                icon={<PropertySearchIcon />}
+                onClick={() => navigate('/properties')}
+                color="#0288D1"
+                gradient="linear-gradient(to bottom right, rgba(2, 136, 209, 0.05), rgba(2, 136, 209, 0.1))"
+              />
+            </Grid>
+            
+            <Grid item xs={12} sm={6} md={3}>
+              <QuickActionCard
+                title="المستخدمين"
+                description={String(stats?.usersCount ?? 0)}
+                icon={<UsersGroupIcon />}
+                onClick={() => navigate('/users')}
+                color="#0097A7"
+                gradient="linear-gradient(to bottom right, rgba(0, 151, 167, 0.05), rgba(0, 151, 167, 0.1))"
+              />
+            </Grid>
+            
+            <Grid item xs={12} sm={6} md={3}>
+              <QuickActionCard
+                title="الأقسام"
+                description={String(stats?.categoriesCount ?? 0)}
+                icon={<BookingConfirmIcon />}
+                onClick={() => navigate('/categories')}
+                color="#00796B"
+                gradient="linear-gradient(to bottom right, rgba(0, 121, 107, 0.05), rgba(0, 121, 107, 0.1))"
+              />
+            </Grid>
+            
+            <Grid item xs={12} sm={6} md={3}>
+              <QuickActionCard
+                title="العمولات"
+                description={`${formatPrice(stats?.totalCommission ?? 0)}`}
+                icon={<CommissionIcon />}
+                onClick={() => {}}
+                color="#00695C"
+                gradient="linear-gradient(to bottom right, rgba(0, 105, 92, 0.05), rgba(0, 105, 92, 0.1))"
+              />
+            </Grid>
+          </Grid>
+        </Paper>
+
+        {/* Footer Separator */}
+        <Box 
+          sx={{ 
+            display: 'flex',
+            justifyContent: 'center',
+            width: '100%',
+            mt: 4,
+            mb: 2,
+            overflow: 'hidden'
+          }}
+        >
+          <Box
+            component="img"
+            src="/fasel.png"
+            alt="فاصل زخرفي"
+            sx={{
+              width: '100%',
+              maxWidth: 1200,
+              height: 'auto',
+              maxHeight: 80,
+              objectFit: 'contain',
+              opacity: 0.7,
+              transform: 'scaleY(-1)'
+            }}
+          />
+        </Box>
       </Box>
     </Layout>
   );
 };
 
-export default Dashboard;
+export default Dashboard; 

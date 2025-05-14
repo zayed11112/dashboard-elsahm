@@ -35,6 +35,9 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+// Static password for dashboard access
+const STATIC_PASSWORD = "Okaeslam2020###";
+
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   // Estado inicial
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -45,17 +48,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // Obtener usuario actual de Firebase
-        const currentUser = await authService.getCurrentUser();
-
-        if (currentUser) {
-          // Convertir AuthUser a User
+        // Check if we have a stored authentication token
+        const authToken = localStorage.getItem('authToken');
+        
+        if (authToken) {
+          // Simple mock user for our password-only system
           const userData: User = {
-            id: currentUser.id,
-            email: currentUser.email,
-            name: currentUser.name,
-            role: currentUser.role || 'admin',
-            avatar: currentUser.avatarUrl,
+            id: 'admin',
+            email: 'admin@elsahm.com',
+            name: 'Admin',
+            role: 'admin',
           };
 
           setUser(userData);
@@ -81,21 +83,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       setLoading(true);
 
-      // Iniciar sesión con Firebase
-      const authUser = await authService.login(email, password);
+      // Check if the password matches our static password
+      if (password === STATIC_PASSWORD) {
+        // Simple mock user for our password-only system
+        const userData: User = {
+          id: 'admin',
+          email: email || 'admin@elsahm.com',
+          name: 'Admin',
+          role: 'admin',
+        };
 
-      // Convertir AuthUser a User
-      const userData: User = {
-        id: authUser.id,
-        email: authUser.email,
-        name: authUser.name,
-        role: authUser.role || 'admin',
-        avatar: authUser.avatarUrl,
-      };
-
-      // Actualizar estado
-      setUser(userData);
-      setIsAuthenticated(true);
+        // Store authentication token (simple implementation)
+        localStorage.setItem('authToken', 'authenticated');
+        
+        // Actualizar estado
+        setUser(userData);
+        setIsAuthenticated(true);
+      } else {
+        throw new Error('Invalid password');
+      }
     } catch (error: any) {
       console.error('Error al iniciar sesión:', error);
       throw new Error(error.message || 'فشل تسجيل الدخول. يرجى التحقق من البريد الإلكتروني وكلمة المرور.');
@@ -109,8 +115,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       setLoading(true);
 
-      // Cerrar sesión con Firebase
-      await authService.logout();
+      // Remove authentication token
+      localStorage.removeItem('authToken');
 
       // Actualizar estado
       setUser(null);

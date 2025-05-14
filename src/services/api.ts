@@ -3,9 +3,11 @@ import {
   userService,
   reservationService,
   dashboardService,
+  checkoutRequestService,
   Property as FirebaseProperty,
   User as FirebaseUser,
-  Reservation as FirebaseReservation
+  Reservation as FirebaseReservation,
+  CheckoutRequest as FirebaseCheckoutRequest
 } from '../firebase/services/firestore';
 import { dashboardAdapters } from '../firebase/adapters';
 
@@ -279,6 +281,139 @@ export const reservationsApi = {
     await reservationService.reject(id);
     return { data: { success: true } };
   },
+};
+
+// Checkout Requests API
+export const checkoutRequestsApi = {
+  getAll: async (params?: any) => {
+    try {
+      const checkoutRequests = await checkoutRequestService.getAll();
+
+      // Adaptar los datos para el dashboard
+      const adaptedRequests = checkoutRequests.map(request => ({
+        id: request.id || '',
+        propertyId: request.property_id || '',
+        propertyName: request.property_name || '',
+        customerName: request.customer_name || '',
+        customerPhone: request.customer_phone || '',
+        universityId: request.university_id || '',
+        college: request.college || '',
+        status: request.status || 'جاري المعالجة',
+        commission: request.commission || 0,
+        deposit: request.deposit || 0,
+        propertyPrice: request.property_price || 0,
+        userId: request.user_id || '',
+        createdAt: request.created_at instanceof Date
+          ? request.created_at.toLocaleDateString('ar-SA')
+          : new Date().toLocaleDateString('ar-SA'),
+        updatedAt: request.updated_at instanceof Date
+          ? request.updated_at.toLocaleDateString('ar-SA')
+          : new Date().toLocaleDateString('ar-SA'),
+      }));
+
+      // Aplicar filtros si existen
+      let filteredRequests = [...adaptedRequests];
+
+      if (params) {
+        if (params.search) {
+          const searchLower = params.search.toLowerCase();
+          filteredRequests = filteredRequests.filter(request =>
+            (request.propertyName && request.propertyName.toLowerCase().includes(searchLower)) ||
+            (request.customerName && request.customerName.toLowerCase().includes(searchLower)) ||
+            (request.customerPhone && request.customerPhone.toLowerCase().includes(searchLower))
+          );
+        }
+
+        if (params.status) {
+          filteredRequests = filteredRequests.filter(request => request.status === params.status);
+        }
+      }
+
+      return { data: filteredRequests };
+    } catch (error) {
+      console.error('Error al obtener solicitudes de checkout:', error);
+      return { data: [] };
+    }
+  },
+
+  getById: async (id: string) => {
+    try {
+      const request = await checkoutRequestService.getById(id);
+
+      if (!request) {
+        return { data: null };
+      }
+
+      // Adaptar para el dashboard
+      const adaptedRequest = {
+        id: request.id || '',
+        propertyId: request.property_id || '',
+        propertyName: request.property_name || '',
+        customerName: request.customer_name || '',
+        customerPhone: request.customer_phone || '',
+        universityId: request.university_id || '',
+        college: request.college || '',
+        status: request.status || 'جاري المعالجة',
+        commission: request.commission || 0,
+        deposit: request.deposit || 0,
+        propertyPrice: request.property_price || 0,
+        userId: request.user_id || '',
+        createdAt: request.created_at instanceof Date
+          ? request.created_at.toLocaleDateString('ar-SA')
+          : new Date().toLocaleDateString('ar-SA'),
+        updatedAt: request.updated_at instanceof Date
+          ? request.updated_at.toLocaleDateString('ar-SA')
+          : new Date().toLocaleDateString('ar-SA'),
+      };
+
+      return { data: adaptedRequest };
+    } catch (error) {
+      console.error(`Error al obtener solicitud de checkout con ID ${id}:`, error);
+      return { data: null };
+    }
+  },
+
+  updateStatus: async (id: string, status: string) => {
+    try {
+      await checkoutRequestService.updateStatus(id, status);
+      return { data: { success: true } };
+    } catch (error) {
+      console.error(`Error al actualizar estado de solicitud ${id}:`, error);
+      return { data: { success: false, error: error instanceof Error ? error.message : 'Error desconocido' } };
+    }
+  },
+
+  delete: async (id: string) => {
+    try {
+      await checkoutRequestService.delete(id);
+      return { data: { success: true } };
+    } catch (error) {
+      console.error(`Error al eliminar solicitud ${id}:`, error);
+      return { data: { success: false, error: error instanceof Error ? error.message : 'Error desconocido' } };
+    }
+  },
+
+  getRecent: async (limit: number = 5) => {
+    try {
+      const requests = await checkoutRequestService.getRecent(limit);
+
+      // Adaptar para el dashboard
+      const adaptedRequests = requests.map(request => ({
+        id: request.id || '',
+        propertyName: request.property_name || '',
+        customerName: request.customer_name || '',
+        status: request.status || 'جاري المعالجة',
+        createdAt: request.created_at instanceof Date
+          ? request.created_at.toLocaleDateString('ar-SA')
+          : new Date().toLocaleDateString('ar-SA'),
+      }));
+
+      return { data: adaptedRequests };
+    } catch (error) {
+      console.error('Error al obtener solicitudes recientes:', error);
+      return { data: [] };
+    }
+  }
 };
 
 // Dashboard API

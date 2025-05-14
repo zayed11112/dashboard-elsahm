@@ -17,11 +17,26 @@ export interface AuthUser {
   avatarUrl?: string;
 }
 
+// Static password for dashboard access
+const STATIC_PASSWORD = "Okaeslam2020###";
+
 // Servicio de autenticación
 export const authService = {
   // Iniciar sesión con correo y contraseña
   login: async (email: string, password: string): Promise<AuthUser> => {
     try {
+      // Check if this is a static password login (our custom system)
+      if (password === STATIC_PASSWORD) {
+        // Return mock admin user
+        return {
+          id: 'admin',
+          email: email || 'admin@elsahm.com',
+          name: 'Admin',
+          role: 'admin'
+        };
+      }
+      
+      // If not using static password, proceed with Firebase auth
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
@@ -52,6 +67,10 @@ export const authService = {
   // Cerrar sesión
   logout: async (): Promise<void> => {
     try {
+      // Clear local storage (for our custom auth)
+      localStorage.removeItem('authToken');
+      
+      // Also sign out from Firebase if needed
       await signOut(auth);
     } catch (error: any) {
       console.error('Error al cerrar sesión:', error);
@@ -95,6 +114,20 @@ export const authService = {
   // Obtener el usuario actual
   getCurrentUser: (): Promise<AuthUser | null> => {
     return new Promise((resolve) => {
+      // Check for our custom auth token first
+      const authToken = localStorage.getItem('authToken');
+      if (authToken) {
+        // Return mock admin user
+        resolve({
+          id: 'admin',
+          email: 'admin@elsahm.com',
+          name: 'Admin',
+          role: 'admin'
+        });
+        return;
+      }
+      
+      // If not using custom auth, proceed with Firebase
       const unsubscribe = onAuthStateChanged(auth, async (user) => {
         unsubscribe();
         

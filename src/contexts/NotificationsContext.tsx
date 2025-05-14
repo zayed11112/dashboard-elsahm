@@ -7,9 +7,9 @@ export interface Notification {
   id: string;
   message: string;
   time: string;
-  timestamp: Timestamp;
+  timestamp?: Timestamp;
   read: boolean;
-  type: 'user' | 'property' | 'reservation' | 'system';
+  type: 'user' | 'property' | 'reservation' | 'system' | 'payment' | 'success' | 'error';
 }
 
 // Definir el tipo del contexto
@@ -18,7 +18,7 @@ interface NotificationsContextType {
   unreadCount: number;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
-  addNotification: (message: string, type: 'user' | 'property' | 'reservation' | 'system') => Promise<void>;
+  addNotification: (messageOrObject: string | Partial<Notification>, type?: 'user' | 'property' | 'reservation' | 'system' | 'payment' | 'success' | 'error') => Promise<void>;
   loading: boolean;
 }
 
@@ -94,6 +94,14 @@ export const NotificationsProvider = ({ children }: NotificationsProviderProps) 
     }
   };
 
+  // وظيفة لتحويل التاريخ إلى كائن Timestamp من Firestore
+  const getTimestamp = (dateString?: string): Timestamp => {
+    if (dateString) {
+      return Timestamp.fromDate(new Date(dateString));
+    }
+    return Timestamp.now();
+  };
+
   // Marcar una notificación como leída
   const markAsRead = async (id: string) => {
     try {
@@ -121,15 +129,54 @@ export const NotificationsProvider = ({ children }: NotificationsProviderProps) 
   };
 
   // Añadir una nueva notificación
-  const addNotification = async (message: string, type: 'user' | 'property' | 'reservation' | 'system') => {
+  const addNotification = async (
+    messageOrObject: string | Partial<Notification>, 
+    type: 'user' | 'property' | 'reservation' | 'system' | 'payment' | 'success' | 'error' = 'system'
+  ) => {
     try {
       const notificationsRef = collection(db, 'notifications');
-      await addDoc(notificationsRef, {
-        message,
-        timestamp: Timestamp.now(),
-        read: false,
-        type,
-      });
+      
+      // إذا كان المدخل هو نص (الطريقة القديمة)
+      if (typeof messageOrObject === 'string') {
+        await addDoc(notificationsRef, {
+          message: messageOrObject,
+          timestamp: Timestamp.now(),
+          read: false,
+          type,
+        });
+      } 
+      // إذا كان المدخل كائن (الطريقة الجديدة)
+      else {
+        const { id, message, read = false, type: objectType = type, time } = messageOrObject;
+        
+        // إعداد بيانات الإشعار
+        const notificationData: any = {
+          message,
+          timestamp: messageOrObject.timestamp || getTimestamp(time),
+          read,
+          type: objectType,
+        };
+        
+        // إذا تم تحديد معرف، استخدم وثيقة محددة
+        if (id) {
+          const docRef = doc(db, 'notifications', id);
+          await updateDoc(docRef, notificationData);
+        } else {
+          // إضافة وثيقة جديدة
+          await addDoc(notificationsRef, notificationData);
+        }
+        
+        // أضف الإشعار محليًا أيضًا للتحديث الفوري
+        const newNotification: Notification = {
+          id: id || `temp-${Date.now()}`,
+          message: message || '',
+          time: time || formatTime(Timestamp.now()),
+          read,
+          type: objectType,
+        };
+        
+        setNotifications(prev => [newNotification, ...prev]);
+      }
     } catch (error) {
       console.error('Error adding notification:', error);
     }

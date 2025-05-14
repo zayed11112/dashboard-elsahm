@@ -254,11 +254,11 @@ const Properties: React.FC = () => {
 
   // Format price as currency
   const formatPrice = (price: number) => {
-    // تنسيق السعر بدون أصفار إضافية
-    return new Intl.NumberFormat('ar-EG', {
+    // تنسيق السعر بدون أصفار إضافية بالإنجليزية
+    return new Intl.NumberFormat('en-US', {
       style: 'decimal', // استخدام تنسيق عشري بدلاً من تنسيق العملة
       maximumFractionDigits: 0, // بدون كسور عشرية
-    }).format(price) + ' ج.م'; // إضافة رمز العملة يدوياً
+    }).format(price) + ' EGP'; // إضافة رمز العملة يدوياً
   };
 
   // Calculate property statistics
@@ -296,7 +296,7 @@ const Properties: React.FC = () => {
 
 
   return (
-    <Layout title="إدارة العقارات">
+    <Layout title="العقارات">
       <Box sx={{ p: 3 }}>
         {/* Error Alert */}
         {error && (
@@ -370,17 +370,19 @@ const Properties: React.FC = () => {
 
             <Box>
               <Tooltip title="تحديث البيانات">
-                <IconButton
-                  onClick={refreshProperties}
-                  disabled={loading}
-                  sx={{
-                    mr: 1,
-                    backgroundColor: `${palette.primary.main}15`,
-                    '&:hover': { backgroundColor: `${palette.primary.main}25` }
-                  }}
-                >
-                  {loading ? <CircularProgress size={24} /> : <RefreshIcon />}
-                </IconButton>
+                <span>
+                  <IconButton
+                    onClick={refreshProperties}
+                    disabled={loading}
+                    sx={{
+                      mr: 1,
+                      backgroundColor: `${palette.primary.main}15`,
+                      '&:hover': { backgroundColor: `${palette.primary.main}25` }
+                    }}
+                  >
+                    {loading ? <CircularProgress size={24} /> : <RefreshIcon />}
+                  </IconButton>
+                </span>
               </Tooltip>
 
               <Button
@@ -660,14 +662,16 @@ const Properties: React.FC = () => {
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="تكرار العقار">
-                          <IconButton
-                            color="success"
-                            onClick={() => openDuplicateDialog(property.id)}
-                            sx={{ backgroundColor: `${palette.success.main}15`, mr: 1 }}
-                            disabled={isDuplicating}
-                          >
-                            <ContentCopyIcon />
-                          </IconButton>
+                          <span>
+                            <IconButton
+                              color="success"
+                              onClick={() => openDuplicateDialog(property.id)}
+                              sx={{ backgroundColor: `${palette.success.main}15`, mr: 1 }}
+                              disabled={isDuplicating}
+                            >
+                              <ContentCopyIcon />
+                            </IconButton>
+                          </span>
                         </Tooltip>
                         <Tooltip title="حذف العقار">
                           <IconButton

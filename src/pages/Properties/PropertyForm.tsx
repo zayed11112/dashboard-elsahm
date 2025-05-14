@@ -48,6 +48,7 @@ import {
 import Layout from '../../components/Layout';
 import { supabasePropertiesApi, imgbbApi, SupabaseProperty } from '../../services/supabaseApi';
 import { supabaseOwnersApi, SupabaseOwner } from '../../services/ownersApi';
+import { useNotifications } from '../../contexts/NotificationsContext';
 
 // Property type options
 const propertyTypes = [
@@ -97,6 +98,7 @@ const PropertyForm: React.FC = () => {
   const navigate = useNavigate();
   const isEditMode = Boolean(id);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { addNotification } = useNotifications();
 
   // Form state
   const [property, setProperty] = useState<Property>({
@@ -409,28 +411,16 @@ const PropertyForm: React.FC = () => {
       };
 
       if (isEditMode && id) {
-        // Update existing property
         await supabasePropertiesApi.update(id, supabaseProperty);
         setSuccess('تم تحديث العقار بنجاح');
+        await addNotification(`تم تحديث العقار: ${property.name}`, 'property');
       } else {
-        // Create new property
-        console.log('Creando nueva propiedad:', supabaseProperty);
-        try {
-          const response = await supabasePropertiesApi.create(supabaseProperty);
-          console.log('Respuesta de creación:', response);
-          setSuccess('تم إضافة العقار بنجاح');
-
-          // Navigate to edit page for the new property
-          if (response.data && response.data.id) {
-            setTimeout(() => {
-              navigate(`/properties/${response.data.id}`);
-            }, 1500);
-          }
-        } catch (error: any) {
-          console.error('Error específico al crear propiedad:', error);
-          // تحسين رسالة الخطأ لتكون أكثر وضوحاً للمستخدم
-          setError('حدث خطأ أثناء إنشاء العقار. يرجى التحقق من البيانات المدخلة والمحاولة مرة أخرى.');
-        }
+        const response = await supabasePropertiesApi.create(supabaseProperty);
+        setSuccess('تم إضافة العقار بنجاح');
+        await addNotification(`تم إضافة عقار جديد: ${property.name}`, 'property');
+        
+        // Navigate to the property page
+        navigate(`/properties/${response.data.id}`);
       }
     } catch (err) {
       console.error('Error saving property:', err);
@@ -557,8 +547,6 @@ const PropertyForm: React.FC = () => {
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
               </Grid>
-
-
 
               {/* Price */}
               <Grid item xs={12} md={3}>

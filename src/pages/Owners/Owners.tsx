@@ -228,7 +228,7 @@ const Owners: React.FC = () => {
   );
 
   return (
-    <Layout title="إدارة المُلاك">
+    <Layout title="المُلاك">
       <Box sx={{ p: 3 }}>
         {/* Error Alert */}
         {error && (
@@ -271,17 +271,19 @@ const Owners: React.FC = () => {
 
             <Box>
               <Tooltip title="تحديث البيانات">
-                <IconButton
-                  onClick={fetchOwners}
-                  disabled={loading}
-                  sx={{
-                    mr: 1,
-                    backgroundColor: `${palette.primary.main}15`,
-                    '&:hover': { backgroundColor: `${palette.primary.main}25` }
-                  }}
-                >
-                  {loading ? <CircularProgress size={24} /> : <RefreshIcon />}
-                </IconButton>
+                <span>
+                  <IconButton
+                    onClick={fetchOwners}
+                    disabled={loading}
+                    sx={{
+                      mr: 1,
+                      backgroundColor: `${palette.primary.main}15`,
+                      '&:hover': { backgroundColor: `${palette.primary.main}25` }
+                    }}
+                  >
+                    {loading ? <CircularProgress size={24} /> : <RefreshIcon />}
+                  </IconButton>
+                </span>
               </Tooltip>
 
               <Button
