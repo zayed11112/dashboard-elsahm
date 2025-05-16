@@ -47,7 +47,8 @@ import {
   Schedule as ScheduleIcon,
   Search as SearchIcon,
   FilterList as FilterListIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  Notifications as NotificationsIcon
 } from '@mui/icons-material';
 import Layout from '../../components/Layout';
 import { supabase } from '../../supabase/client';
@@ -96,19 +97,16 @@ const PaymentRequests: React.FC = () => {
   const [currentRequest, setCurrentRequest] = useState<PaymentRequest | null>(null);
   const [rejectionReason, setRejectionReason] = useState<string>('');
   const [actionLoading, setActionLoading] = useState<boolean>(false);
+  const [sendNotificationDialogOpen, setSendNotificationDialogOpen] = useState<boolean>(false);
+  const [notificationMessage, setNotificationMessage] = useState<string>('');
 
   // للتعامل مع الإشعارات
   const { addNotification } = useNotifications();
 
   // تنسيق العملة بالأرقام الإنجليزية
   const formatCurrency = useCallback((amount: number) => {
-    const formatter = new Intl.NumberFormat('en-US', {
-      style: 'decimal',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
-    
-    return formatter.format(amount) + ' جنيه';
+    // تعديل التنسيق ليظهر المبلغ بدون كسور عشرية وبدون فواصل
+    return Math.round(amount) + ' جنيه';
   }, []);
 
   // تنسيق التاريخ بالميلادي
@@ -281,6 +279,62 @@ const PaymentRequests: React.FC = () => {
     setCurrentRequest(request);
     setRejectionReason('');
     setRejectDialogOpen(true);
+  };
+
+  // إرسال إشعار للمستخدم مباشرة إلى Firestore
+  const handleOpenSendNotificationDialog = (request: PaymentRequest) => {
+    setCurrentRequest(request);
+    
+    // تعيين رسالة مختلفة بناءً على حالة الطلب
+    if (request.status === 'approved') {
+      setNotificationMessage(`تم إضافة ${formatCurrency(request.amount)} إلى رصيد محفظتك بنجاح.`);
+    } else if (request.status === 'rejected') {
+      setNotificationMessage(`نأسف، تم رفض طلب شحن رصيد محفظتك بمبلغ ${formatCurrency(request.amount)}. يرجى التواصل معنا للمزيد من المعلومات.`);
+    } else {
+      setNotificationMessage(``);
+    }
+    
+    setSendNotificationDialogOpen(true);
+  };
+
+  // دالة إرسال الإشعار للمستخدم
+  const sendNotificationToUser = async () => {
+    if (!currentRequest || !notificationMessage.trim()) {
+      setError('الرجاء إدخال نص الإشعار');
+      return;
+    }
+    
+    try {
+      setActionLoading(true);
+      
+      // إنشاء إشعار جديد في Firestore مباشرة (ليس من خلال سياق الإشعارات)
+      const timestamp = new Date();
+      
+      // حفظ الإشعار مباشرة في مجموعة notifications في Firestore
+      await setDoc(doc(db, 'notifications', `wallet_${currentRequest.id}_${Date.now()}`), {
+        userId: currentRequest.user_id, // معرف المستخدم (مهم للفلترة)
+        title: 'شركة سهم محفظتك',
+        body: notificationMessage,
+        timestamp: timestamp,
+        isRead: false,
+        read: false,
+        targetScreen: 'wallet',
+        type: 'wallet',
+        additionalData: {
+          amount: currentRequest.amount,
+        }
+      });
+      
+      setSuccess(`تم إرسال الإشعار للمستخدم ${currentRequest.user_name} بنجاح.`);
+      setSendNotificationDialogOpen(false);
+      
+    } catch (err: any) {
+      console.error('Error sending notification:', err);
+      setError('حدث خطأ أثناء إرسال الإشعار: ' + err.message);
+    } finally {
+      setActionLoading(false);
+      setCurrentRequest(null);
+    }
   };
 
   // الموافقة على طلب الدفع
@@ -986,11 +1040,63 @@ const PaymentRequests: React.FC = () => {
                               </IconButton>
                             </Tooltip>
                           </Box>
+                        ) : request.status === 'approved' ? (
+                          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                            <Chip
+                              label="تمت الموافقة"
+                              size="small"
+                              color="success"
+                              variant="outlined"
+                              sx={{ fontWeight: 500, fontSize: '0.7rem' }}
+                            />
+                            <Tooltip title="إرسال إشعار للمستخدم">
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                onClick={() => handleOpenSendNotificationDialog(request)}
+                                sx={{ 
+                                  bgcolor: 'primary.lighter', 
+                                  '&:hover': { 
+                                    bgcolor: 'primary.light',
+                                    transform: 'scale(1.1)' 
+                                  }
+                                }}
+                              >
+                                <NotificationsIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        ) : request.status === 'rejected' ? (
+                          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                            <Chip
+                              label="تم الرفض"
+                              size="small"
+                              color="error"
+                              variant="outlined"
+                              sx={{ fontWeight: 500, fontSize: '0.7rem' }}
+                            />
+                            <Tooltip title="إرسال إشعار للمستخدم">
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                onClick={() => handleOpenSendNotificationDialog(request)}
+                                sx={{ 
+                                  bgcolor: 'primary.lighter', 
+                                  '&:hover': { 
+                                    bgcolor: 'primary.light',
+                                    transform: 'scale(1.1)' 
+                                  }
+                                }}
+                              >
+                                <NotificationsIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
                         ) : (
                           <Chip
-                            label={request.status === 'approved' ? 'تمت الموافقة' : 'تم الرفض'}
+                            label="غير معروف"
                             size="small"
-                            color={request.status === 'approved' ? 'success' : 'error'}
+                            color="default"
                             variant="outlined"
                             sx={{ fontWeight: 500, fontSize: '0.7rem' }}
                           />
@@ -1305,6 +1411,107 @@ const PaymentRequests: React.FC = () => {
               }}
             >
               {actionLoading ? 'جاري الرفض...' : 'تأكيد الرفض'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+        
+        {/* مربع حوار إرسال الإشعار */}
+        <Dialog
+          open={sendNotificationDialogOpen}
+          onClose={() => setSendNotificationDialogOpen(false)}
+          PaperProps={{
+            sx: {
+              borderRadius: 3,
+              boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)'
+            }
+          }}
+        >
+          <DialogTitle sx={{ 
+            fontWeight: 600, 
+            color: 'primary.main', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1 
+          }}>
+            <NotificationsIcon />
+            إرسال إشعار للمستخدم
+          </DialogTitle>
+          <DialogContent>
+            <DialogContentText sx={{ mb: 2 }}>
+              سيتم إرسال إشعار للمستخدم. يمكنك تعديل نص الإشعار.
+            </DialogContentText>
+            
+            {currentRequest && (
+              <Box sx={{ 
+                bgcolor: 'background.neutral', 
+                p: 2, 
+                borderRadius: 2, 
+                mb: 2,
+                textAlign: 'center'
+              }}>
+                <Grid container spacing={2} alignItems="center">
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body2" color="text.secondary">
+                      المستخدم
+                    </Typography>
+                    <Typography variant="body1" fontWeight={600}>
+                      {currentRequest.user_name}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body2" color="text.secondary">
+                      المبلغ
+                    </Typography>
+                    <Typography 
+                      variant="body1" 
+                      fontWeight={700} 
+                      color="success.main"
+                      sx={{ direction: 'ltr' }}
+                    >
+                      {formatCurrency(currentRequest.amount)}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Typography variant="body2" color="text.secondary">
+                      معرف المستخدم
+                    </Typography>
+                    <Typography variant="body1" fontWeight={500} sx={{ direction: 'ltr' }}>
+                      {currentRequest.user_id}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </Box>
+            )}
+            
+            <TextField
+              autoFocus
+              margin="dense"
+              label="نص الإشعار"
+              type="text"
+              fullWidth
+              multiline
+              rows={4}
+              value={notificationMessage}
+              onChange={(e) => setNotificationMessage(e.target.value)}
+              sx={{ my: 2 }}
+            />
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 3 }}>
+            <Button 
+              onClick={() => setSendNotificationDialogOpen(false)}
+              variant="outlined"
+              color="inherit"
+            >
+              إلغاء
+            </Button>
+            <Button 
+              onClick={sendNotificationToUser}
+              variant="contained"
+              color="primary"
+              startIcon={<NotificationsIcon />}
+              disabled={actionLoading}
+            >
+              {actionLoading ? 'جارٍ الإرسال...' : 'إرسال الإشعار'}
             </Button>
           </DialogActions>
         </Dialog>

@@ -45,6 +45,7 @@ import {
   PendingActions as PendingActionsIcon,
   Refresh as RefreshIcon,
   Payment as PaymentIcon,
+  Notifications as NotificationsIcon,
 } from '@mui/icons-material';
 import Layout from '../../components/Layout';
 import { checkoutRequestsApi } from '../../services/api';
@@ -55,6 +56,8 @@ import {
   StatCard,
 } from '../../components/responsive';
 import { useNotifications } from '../../contexts/NotificationsContext';
+import { doc, collection, addDoc, getDoc } from 'firebase/firestore';
+import { db } from '../../firebase/config';
 
 // تعريف واجهة طلب الحجز
 interface CheckoutRequest {
@@ -108,6 +111,12 @@ const CheckoutRequests: React.FC = () => {
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [requestToUpdateStatus, setRequestToUpdateStatus] = useState<string | null>(null);
   const [newStatus, setNewStatus] = useState('');
+
+  // حالة حوار إرسال الإشعار
+  const [notificationDialogOpen, setNotificationDialogOpen] = useState(false);
+  const [requestToNotify, setRequestToNotify] = useState<CheckoutRequest | null>(null);
+  const [notificationMessage, setNotificationMessage] = useState('');
+  const [notificationTitle, setNotificationTitle] = useState('');
 
   // إحصائيات طلبات الحجز
   const checkoutStats = useMemo(() => {
@@ -312,6 +321,62 @@ const CheckoutRequests: React.FC = () => {
   // تنسيق السعر
   const formatPrice = (price: number): string => {
     return `${price.toLocaleString('en-US')} EGP`;
+  };
+
+  // فتح حوار إرسال الإشعار
+  const openNotificationDialog = (request: CheckoutRequest) => {
+    setRequestToNotify(request);
+    setNotificationTitle(`تأكيد حجز ${request.propertyName}`);
+    setNotificationMessage(`تم الحجز بنجاح لـ ${request.propertyName}.لمزيد من التفاصيل يرجى التواصل معنا على الرقم 01093130120.`);
+    setNotificationDialogOpen(true);
+  };
+
+  // إغلاق حوار إرسال الإشعار
+  const closeNotificationDialog = () => {
+    setRequestToNotify(null);
+    setNotificationDialogOpen(false);
+  };
+
+  // إرسال إشعار للمستخدم
+  const handleSendNotification = async () => {
+    if (!requestToNotify || !requestToNotify.userId) {
+      setError('لا يمكن إرسال الإشعار، لا يوجد معرف للمستخدم.');
+      closeNotificationDialog();
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // إضافة إشعار في Firestore للمستخدم
+      await addDoc(collection(db, 'notifications'), {
+        userId: requestToNotify.userId.trim(),
+        title: notificationTitle,
+        body: notificationMessage,
+        type: 'reservation',
+        timestamp: new Date(),
+        isRead: false,
+        additionalData: {
+          requestId: requestToNotify.id,
+          propertyName: requestToNotify.propertyName,
+        },
+        targetScreen: 'BookingDetails',
+      });
+
+      // إضافة إشعار للمدير في لوحة التحكم
+      await addNotification(`تم إرسال إشعار لـ ${requestToNotify.customerName} بخصوص طلب الحجز: ${requestToNotify.propertyName}`, 'reservation');
+      
+      closeNotificationDialog();
+      setNotificationMessage('');
+      setNotificationTitle('');
+      
+      // عرض رسالة نجاح (يمكن استخدام toast أو snackbar)
+    } catch (err) {
+      console.error('Error sending notification:', err);
+      setError('حدث خطأ أثناء إرسال الإشعار. يرجى المحاولة مرة أخرى.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -552,6 +617,16 @@ const CheckoutRequests: React.FC = () => {
                             <VisibilityIcon />
                           </IconButton>
                         </Tooltip>
+                        <Tooltip title="إرسال إشعار للمستخدم">
+                          <IconButton
+                            color="info"
+                            onClick={() => openNotificationDialog(request)}
+                            sx={{ backgroundColor: `${palette.info.main}15`, ml: 1 }}
+                            disabled={!request.userId}
+                          >
+                            <NotificationsIcon />
+                          </IconButton>
+                        </Tooltip>
                         <Tooltip title="حذف الطلب">
                           <IconButton
                             color="error"
@@ -637,6 +712,54 @@ const CheckoutRequests: React.FC = () => {
           </Button>
           <Button onClick={handleUpdateStatus} color="primary" variant="contained">
             تحديث
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Notification Dialog */}
+      <Dialog
+        open={notificationDialogOpen}
+        onClose={closeNotificationDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>إرسال إشعار للمستخدم</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            سيتم إرسال هذا الإشعار للمستخدم {requestToNotify?.customerName || ''} بخصوص طلب حجز {requestToNotify?.propertyName || ''}
+          </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="عنوان الإشعار"
+            type="text"
+            fullWidth
+            value={notificationTitle}
+            onChange={(e) => setNotificationTitle(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            label="نص الإشعار"
+            type="text"
+            fullWidth
+            multiline
+            rows={4}
+            value={notificationMessage}
+            onChange={(e) => setNotificationMessage(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeNotificationDialog} color="primary">
+            إلغاء
+          </Button>
+          <Button 
+            onClick={handleSendNotification} 
+            color="primary" 
+            variant="contained"
+            disabled={!notificationMessage || !notificationTitle}
+          >
+            إرسال
           </Button>
         </DialogActions>
       </Dialog>
