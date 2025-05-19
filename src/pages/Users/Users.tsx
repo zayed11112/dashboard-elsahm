@@ -47,6 +47,7 @@ import {
   AccountBalance as AccountBalanceIcon,
   Refresh as RefreshIcon,
   FilterList as FilterListIcon,
+  FileDownload as FileDownloadIcon,
 } from '@mui/icons-material';
 import Layout from '../../components/Layout';
 import { usersApi } from '../../services/api';
@@ -89,6 +90,60 @@ const userStatuses = [
   { value: 'وسيط', label: 'وسيط', color: 'info' },
 ];
 
+// Function to export users data to Excel
+const exportToExcel = (users: User[]) => {
+  // Import the xlsx library dynamically
+  import('xlsx').then(XLSX => {
+    // Prepare data for export - transform users array into worksheet format
+    const exportData = users.map(user => ({
+      'المعرف': user.id,
+      'الاسم': user.name,
+      'البريد الإلكتروني': user.email,
+      'رقم الهاتف': user.phone,
+      'الرقم الجامعي': user.studentId || '-',
+      'الكلية': user.faculty || '-',
+      'الفرع': user.branch || '-',
+      'الدفعة': user.batch || '-',
+      'نوع المستخدم': user.status || '-',
+      'الصلاحية': user.role === 'admin' ? 'مدير' : 'مستخدم',
+      'الرصيد': user.balance || 0,
+      'تاريخ الإنشاء': new Date(user.createdAt).toLocaleDateString('ar-SA'),
+    }));
+
+    // Create worksheet
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+
+    // Set column widths for better readability
+    const columnWidths = [
+      { wch: 20 }, // المعرف
+      { wch: 30 }, // الاسم
+      { wch: 30 }, // البريد الإلكتروني
+      { wch: 15 }, // رقم الهاتف
+      { wch: 15 }, // الرقم الجامعي
+      { wch: 20 }, // الكلية
+      { wch: 15 }, // الفرع
+      { wch: 10 }, // الدفعة
+      { wch: 15 }, // نوع المستخدم
+      { wch: 10 }, // الصلاحية
+      { wch: 10 }, // الرصيد
+      { wch: 15 }, // تاريخ الإنشاء
+    ];
+    worksheet['!cols'] = columnWidths;
+
+    // Add some styling to header row
+    // Create a new workbook and add the worksheet
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'المستخدمين');
+
+    // Generate the Excel file
+    const today = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(workbook, `قائمة_المستخدمين_${today}.xlsx`);
+  }).catch(error => {
+    console.error('Failed to load Excel export library:', error);
+    alert('حدث خطأ أثناء تصدير البيانات. يرجى المحاولة مرة أخرى.');
+  });
+};
+
 const Users: React.FC = () => {
   const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
@@ -115,14 +170,29 @@ const Users: React.FC = () => {
       try {
         setLoading(true);
 
-        // Create filter parameters
+        // Create filter parameters for API call
         const params: Record<string, any> = {};
-        if (searchQuery) params.search = searchQuery;
         if (roleFilter) params.role = roleFilter;
         if (statusFilter) params.status = statusFilter;
 
+        // Get all users and filter client-side for more flexible search
         const response = await usersApi.getAll(params);
-        setUsers(response.data);
+        
+        // If search query exists, filter the response data
+        if (searchQuery.trim()) {
+          const query = searchQuery.toLowerCase().trim();
+          const filteredUsers = response.data.filter((user: User) => 
+            user.name?.toLowerCase().includes(query) || 
+            user.studentId?.toLowerCase().includes(query) || 
+            user.faculty?.toLowerCase().includes(query) ||
+            user.facultyEng?.toLowerCase().includes(query) ||
+            user.branch?.toLowerCase().includes(query) ||
+            user.batch?.toLowerCase().includes(query)
+          );
+          setUsers(filteredUsers);
+        } else {
+          setUsers(response.data);
+        }
       } catch (err) {
         console.error('Error fetching users:', err);
         setError('حدث خطأ أثناء تحميل المستخدمين. يرجى المحاولة مرة أخرى.');
@@ -233,13 +303,26 @@ const Users: React.FC = () => {
     setError(null);
 
     const params: Record<string, any> = {};
-    if (searchQuery) params.search = searchQuery;
     if (roleFilter) params.role = roleFilter;
     if (statusFilter) params.status = statusFilter;
 
     usersApi.getAll(params)
       .then(response => {
-        setUsers(response.data);
+        // Apply client-side search filtering
+        if (searchQuery.trim()) {
+          const query = searchQuery.toLowerCase().trim();
+          const filteredUsers = response.data.filter((user: User) => 
+            user.name?.toLowerCase().includes(query) || 
+            user.studentId?.toLowerCase().includes(query) || 
+            user.faculty?.toLowerCase().includes(query) ||
+            user.facultyEng?.toLowerCase().includes(query) ||
+            user.branch?.toLowerCase().includes(query) ||
+            user.batch?.toLowerCase().includes(query)
+          );
+          setUsers(filteredUsers);
+        } else {
+          setUsers(response.data);
+        }
       })
       .catch(err => {
         console.error('Error refreshing users:', err);
@@ -311,9 +394,7 @@ const Users: React.FC = () => {
             p: 3,
             mb: 3,
             borderRadius: 2,
-            background: `linear-gradient(to right, ${palette.primary.light}15, ${palette.primary.light}05)`,
-            backdropFilter: 'blur(10px)',
-            border: `1px solid ${palette.primary.light}30`,
+            border: `1px solid rgba(25, 118, 210, 0.15)`,
           }}
         >
           <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -323,6 +404,27 @@ const Users: React.FC = () => {
             </Typography>
 
             <Box>
+              <Tooltip title="تصدير إلى Excel">
+                <Button
+                  variant="outlined"
+                  color="success"
+                  startIcon={<FileDownloadIcon />}
+                  onClick={() => exportToExcel(users)}
+                  sx={{
+                    borderRadius: 2,
+                    py: 1.2,
+                    mr: 2,
+                    fontWeight: 'bold',
+                    '&:hover': {
+                      bgcolor: 'success.lighter',
+                      borderColor: 'success.main',
+                    }
+                  }}
+                >
+                  تصدير إلى Excel
+                </Button>
+              </Tooltip>
+
               <Tooltip title="تحديث البيانات">
                 <span>
                   <IconButton
@@ -330,8 +432,6 @@ const Users: React.FC = () => {
                     disabled={loading}
                     sx={{
                       mr: 1,
-                      backgroundColor: `${palette.primary.main}15`,
-                      '&:hover': { backgroundColor: `${palette.primary.main}25` }
                     }}
                   >
                     {loading ? <CircularProgress size={24} /> : <RefreshIcon />}
@@ -350,7 +450,6 @@ const Users: React.FC = () => {
                   px: 3,
                   fontWeight: 'bold',
                   boxShadow: 2,
-                  backgroundImage: palette.gradients.primary,
                   '&:hover': {
                     boxShadow: 4
                   }
@@ -371,7 +470,7 @@ const Users: React.FC = () => {
                 variant="outlined"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="البحث بالاسم أو البريد الإلكتروني أو الرقم الجامعي"
+                placeholder="البحث بالاسم أو ID أو الكلية أو الفرع أو الدفعة"
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">

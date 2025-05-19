@@ -357,9 +357,7 @@ const Properties: React.FC = () => {
             p: 3,
             mb: 3,
             borderRadius: 2,
-            background: `linear-gradient(to right, ${palette.primary.light}15, ${palette.primary.light}05)`,
-            backdropFilter: 'blur(10px)',
-            border: `1px solid ${palette.primary.light}30`,
+            border: `1px solid rgba(25, 118, 210, 0.15)`,
           }}
         >
           <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -376,8 +374,6 @@ const Properties: React.FC = () => {
                     disabled={loading}
                     sx={{
                       mr: 1,
-                      backgroundColor: `${palette.primary.main}15`,
-                      '&:hover': { backgroundColor: `${palette.primary.main}25` }
                     }}
                   >
                     {loading ? <CircularProgress size={24} /> : <RefreshIcon />}
@@ -396,7 +392,6 @@ const Properties: React.FC = () => {
                   px: 3,
                   fontWeight: 'bold',
                   boxShadow: 2,
-                  backgroundImage: palette.gradients.primary,
                   '&:hover': {
                     boxShadow: 4
                   }
@@ -507,7 +502,6 @@ const Properties: React.FC = () => {
             justifyContent: 'space-between',
             alignItems: 'center',
             borderBottom: '2px solid #d0e3f7',
-            background: `linear-gradient(135deg, ${palette.primary.main}15 0%, ${palette.primary.light}15 100%)`
           }}>
             <Typography
               variant="h6"

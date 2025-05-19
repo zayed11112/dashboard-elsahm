@@ -279,13 +279,13 @@ const OwnerDetails: React.FC = () => {
 
                 <Grid container spacing={2}>
                   <Grid item xs={6}>
-                    <Paper sx={{ p: 2, textAlign: 'center', bgcolor: `${palette.primary.main}10`, borderRadius: 2 }}>
+                    <Paper sx={{ p: 2, textAlign: 'center', borderRadius: 2 }}>
                       <Typography variant="h4" color="primary.main">{properties.length}</Typography>
                       <Typography variant="body2">إجمالي العقارات</Typography>
                     </Paper>
                   </Grid>
                   <Grid item xs={6}>
-                    <Paper sx={{ p: 2, textAlign: 'center', bgcolor: `${palette.success.main}10`, borderRadius: 2 }}>
+                    <Paper sx={{ p: 2, textAlign: 'center', borderRadius: 2 }}>
                       <Typography variant="h4" color="success.main">
                         {properties.filter(p => p.is_available).length}
                       </Typography>

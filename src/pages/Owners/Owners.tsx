@@ -258,9 +258,7 @@ const Owners: React.FC = () => {
             p: 3,
             mb: 3,
             borderRadius: 2,
-            background: `linear-gradient(to right, ${palette.primary.light}15, ${palette.primary.light}05)`,
-            backdropFilter: 'blur(10px)',
-            border: `1px solid ${palette.primary.light}30`,
+            border: `1px solid rgba(25, 118, 210, 0.15)`,
           }}
         >
           <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -277,8 +275,6 @@ const Owners: React.FC = () => {
                     disabled={loading}
                     sx={{
                       mr: 1,
-                      backgroundColor: `${palette.primary.main}15`,
-                      '&:hover': { backgroundColor: `${palette.primary.main}25` }
                     }}
                   >
                     {loading ? <CircularProgress size={24} /> : <RefreshIcon />}
@@ -297,7 +293,6 @@ const Owners: React.FC = () => {
                   px: 3,
                   fontWeight: 'bold',
                   boxShadow: 2,
-                  backgroundImage: palette.gradients.primary,
                   '&:hover': {
                     boxShadow: 4
                   }
@@ -367,7 +362,6 @@ const Owners: React.FC = () => {
             justifyContent: 'space-between',
             alignItems: 'center',
             borderBottom: '2px solid #d0e3f7',
-            background: `linear-gradient(135deg, ${palette.primary.main}15 0%, ${palette.primary.light}15 100%)`
           }}>
             <Typography
               variant="h6"
@@ -406,7 +400,7 @@ const Owners: React.FC = () => {
               </Box>
             ) : (
               <Table>
-                <TableHead sx={{ backgroundColor: `${palette.primary.main}08` }}>
+                <TableHead>
                   <TableRow>
                     <TableCell sx={{ fontWeight: 'bold' }}>اسم المالك</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>رقم الهاتف</TableCell>
@@ -433,7 +427,6 @@ const Owners: React.FC = () => {
                               height: 40,
                               borderRadius: 1,
                               mr: 2,
-                              bgcolor: `${palette.primary.main}15`,
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center'

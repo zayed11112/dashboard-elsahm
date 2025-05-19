@@ -31,6 +31,7 @@ import {
   Tooltip,
   Divider,
   useTheme,
+  Badge,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -58,6 +59,74 @@ import {
 import { useNotifications } from '../../contexts/NotificationsContext';
 import { doc, collection, addDoc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+
+// OneSignal Configuration
+const ONESIGNAL_APP_ID = '3136dbc6-c09c-4bca-b0aa-fe35421ac513';
+const ONESIGNAL_REST_API_KEY = 'os_v2_app_ge3nxrwatrf4vmfk7y2uegwfcoh7sdj2pttujimbv2rz3di7wkuasxw76ylt66ecvgc65sx4fuikh2dph23tq66ryq2gdog47mzg2ja';
+
+// دالة لإرسال إشعار عبر OneSignal
+const sendOneSignalNotification = async (
+  userId: string,
+  title: string,
+  message: string,
+  data: Record<string, any> = {}
+) => {
+  try {
+    console.log('Sending OneSignal notification to user:', userId);
+    
+    // تطهير معرف المستخدم من أي مسافات زائدة
+    const cleanUserId = userId.trim();
+    
+    // تبسيط الطلب للتركيز على العناصر الأساسية فقط
+    const payload = {
+      app_id: ONESIGNAL_APP_ID,
+      include_external_user_ids: [cleanUserId],
+      headings: { en: title },
+      contents: { en: message },
+      data: data,
+      // إزالة الإعدادات الإضافية التي قد تسبب مشاكل
+      priority: 10
+    };
+    
+    console.log('OneSignal simplified payload:', JSON.stringify(payload, null, 2));
+    
+    const response = await fetch('https://onesignal.com/api/v1/notifications', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${ONESIGNAL_REST_API_KEY}`,
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    const result = await response.json();
+    console.log('OneSignal API full response:', JSON.stringify(result, null, 2));
+    
+    // تحليل الاستجابة لمعرفة ما إذا كان الإرسال ناجحاً
+    if (!response.ok) {
+      console.error('OneSignal API error status:', response.status);
+      if (result.errors) {
+        console.error('OneSignal API detailed errors:', result.errors);
+        throw new Error(`OneSignal API errors: ${JSON.stringify(result.errors)}`);
+      } else {
+        throw new Error(`OneSignal API HTTP Error: ${response.status}`);
+      }
+    }
+    
+    if (result.recipients === 0) {
+      console.warn('Warning: No recipients received the notification. User may not have the app installed or token might be invalid.');
+    } else {
+      console.log(`Successfully sent to ${result.recipients} recipients`);
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Error sending OneSignal notification:', error);
+    throw error;
+  }
+};
 
 // تعريف واجهة طلب الحجز
 interface CheckoutRequest {
@@ -93,6 +162,7 @@ const CheckoutRequests: React.FC = () => {
   const [checkoutRequests, setCheckoutRequests] = useState<CheckoutRequest[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   // حالة الصفحة
   const [page, setPage] = useState(0);
@@ -114,6 +184,8 @@ const CheckoutRequests: React.FC = () => {
 
   // حالة حوار إرسال الإشعار
   const [notificationDialogOpen, setNotificationDialogOpen] = useState(false);
+  const [inAppNotificationDialogOpen, setInAppNotificationDialogOpen] = useState(false);
+  const [pushNotificationDialogOpen, setPushNotificationDialogOpen] = useState(false);
   const [requestToNotify, setRequestToNotify] = useState<CheckoutRequest | null>(null);
   const [notificationMessage, setNotificationMessage] = useState('');
   const [notificationTitle, setNotificationTitle] = useState('');
@@ -331,10 +403,38 @@ const CheckoutRequests: React.FC = () => {
     setNotificationDialogOpen(true);
   };
 
+  // فتح حوار إرسال الإشعار داخل التطبيق
+  const openInAppNotificationDialog = (request: CheckoutRequest) => {
+    setRequestToNotify(request);
+    setNotificationTitle(`تأكيد حجز ${request.propertyName}`);
+    setNotificationMessage(`تم الحجز بنجاح لـ ${request.propertyName}.لمزيد من التفاصيل يرجى التواصل معنا على الرقم 01093130120.`);
+    setInAppNotificationDialogOpen(true);
+  };
+
+  // فتح حوار إرسال الإشعار خارج التطبيق
+  const openPushNotificationDialog = (request: CheckoutRequest) => {
+    setRequestToNotify(request);
+    setNotificationTitle(`تأكيد حجز ${request.propertyName}`);
+    setNotificationMessage(`تم الحجز بنجاح لـ ${request.propertyName}.لمزيد من التفاصيل يرجى التواصل معنا على الرقم 01093130120.`);
+    setPushNotificationDialogOpen(true);
+  };
+
   // إغلاق حوار إرسال الإشعار
   const closeNotificationDialog = () => {
     setRequestToNotify(null);
     setNotificationDialogOpen(false);
+  };
+
+  // إغلاق حوار إرسال الإشعار داخل التطبيق
+  const closeInAppNotificationDialog = () => {
+    setRequestToNotify(null);
+    setInAppNotificationDialogOpen(false);
+  };
+
+  // إغلاق حوار إرسال الإشعار خارج التطبيق
+  const closePushNotificationDialog = () => {
+    setRequestToNotify(null);
+    setPushNotificationDialogOpen(false);
   };
 
   // إرسال إشعار للمستخدم
@@ -347,6 +447,73 @@ const CheckoutRequests: React.FC = () => {
 
     try {
       setLoading(true);
+      
+      const notificationId = `reservation_${requestToNotify.id}_${Date.now()}`;
+      
+      // إضافة إشعار في Firestore للمستخدم
+      await addDoc(collection(db, 'notifications'), {
+        userId: requestToNotify.userId.trim(),
+        title: notificationTitle,
+        body: notificationMessage,
+        type: 'reservation',
+        timestamp: new Date(),
+        isRead: false,
+        additionalData: {
+          requestId: requestToNotify.id,
+          propertyName: requestToNotify.propertyName,
+        },
+        targetScreen: 'BookingDetails',
+      });
+
+      // إرسال إشعار خارجي باستخدام OneSignal
+      try {
+        const oneSignalResult = await sendOneSignalNotification(
+          requestToNotify.userId.trim(),
+          notificationTitle,
+          notificationMessage,
+          {
+            type: 'reservation',
+            requestId: requestToNotify.id,
+            propertyName: requestToNotify.propertyName,
+            targetScreen: 'BookingDetails'
+          }
+        );
+        
+        console.log('نتيجة إرسال إشعار OneSignal:', oneSignalResult);
+        setSuccess(`تم إرسال الإشعار للمستخدم ${requestToNotify.customerName} بنجاح (داخل التطبيق وخارجه).`);
+      } catch (pushError) {
+        console.error('فشل إرسال إشعار OneSignal:', pushError);
+        // في حالة فشل إرسال الإشعار الخارجي، نعتبر العملية ناجحة لأننا أضفنا الإشعار بنجاح في Firestore على الأقل
+        setSuccess(`تم إرسال الإشعار للمستخدم ${requestToNotify.customerName} بنجاح (داخل التطبيق فقط). لم يتم إرسال إشعار خارجي.`);
+      }
+
+      // إضافة إشعار للمدير في لوحة التحكم
+      await addNotification(`تم إرسال إشعار لـ ${requestToNotify.customerName} بخصوص طلب الحجز: ${requestToNotify.propertyName}`, 'reservation');
+      
+      closeNotificationDialog();
+      setNotificationMessage('');
+      setNotificationTitle('');
+      
+    } catch (err) {
+      console.error('Error sending notification:', err);
+      setError('حدث خطأ أثناء إرسال الإشعار. يرجى المحاولة مرة أخرى.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // إرسال إشعار داخل التطبيق فقط
+  const handleSendInAppNotification = async () => {
+    if (!requestToNotify || !requestToNotify.userId) {
+      setError('لا يمكن إرسال الإشعار، لا يوجد معرف للمستخدم.');
+      closeInAppNotificationDialog();
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      const notificationId = `reservation_${requestToNotify.id}_${Date.now()}`;
       
       // إضافة إشعار في Firestore للمستخدم
       await addDoc(collection(db, 'notifications'), {
@@ -364,15 +531,57 @@ const CheckoutRequests: React.FC = () => {
       });
 
       // إضافة إشعار للمدير في لوحة التحكم
-      await addNotification(`تم إرسال إشعار لـ ${requestToNotify.customerName} بخصوص طلب الحجز: ${requestToNotify.propertyName}`, 'reservation');
+      await addNotification(`تم إرسال إشعار داخلي لـ ${requestToNotify.customerName} بخصوص طلب الحجز: ${requestToNotify.propertyName}`, 'reservation');
       
-      closeNotificationDialog();
+      setSuccess(`تم إرسال الإشعار داخل التطبيق للمستخدم ${requestToNotify.customerName} بنجاح.`);
+      closeInAppNotificationDialog();
       setNotificationMessage('');
       setNotificationTitle('');
       
-      // عرض رسالة نجاح (يمكن استخدام toast أو snackbar)
     } catch (err) {
-      console.error('Error sending notification:', err);
+      console.error('Error sending in-app notification:', err);
+      setError('حدث خطأ أثناء إرسال الإشعار. يرجى المحاولة مرة أخرى.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // إرسال إشعار خارج التطبيق فقط
+  const handleSendPushNotification = async () => {
+    if (!requestToNotify || !requestToNotify.userId) {
+      setError('لا يمكن إرسال الإشعار، لا يوجد معرف للمستخدم.');
+      closePushNotificationDialog();
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // إرسال إشعار خارجي باستخدام OneSignal
+      const oneSignalResult = await sendOneSignalNotification(
+        requestToNotify.userId.trim(),
+        notificationTitle,
+        notificationMessage,
+        {
+          type: 'reservation',
+          requestId: requestToNotify.id,
+          propertyName: requestToNotify.propertyName,
+          targetScreen: 'BookingDetails'
+        }
+      );
+      
+      console.log('نتيجة إرسال إشعار OneSignal:', oneSignalResult);
+      
+      // إضافة إشعار للمدير في لوحة التحكم
+      await addNotification(`تم إرسال إشعار خارجي لـ ${requestToNotify.customerName} بخصوص طلب الحجز: ${requestToNotify.propertyName}`, 'reservation');
+      
+      setSuccess(`تم إرسال الإشعار خارج التطبيق للمستخدم ${requestToNotify.customerName} بنجاح.`);
+      closePushNotificationDialog();
+      setNotificationMessage('');
+      setNotificationTitle('');
+      
+    } catch (err) {
+      console.error('Error sending push notification:', err);
       setError('حدث خطأ أثناء إرسال الإشعار. يرجى المحاولة مرة أخرى.');
     } finally {
       setLoading(false);
@@ -384,8 +593,15 @@ const CheckoutRequests: React.FC = () => {
       <Box sx={{ p: 3 }}>
         {/* Error Alert */}
         {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
+          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
             {error}
+          </Alert>
+        )}
+
+        {/* Success Alert */}
+        {success && (
+          <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess(null)}>
+            {success}
           </Alert>
         )}
 
@@ -529,8 +745,7 @@ const CheckoutRequests: React.FC = () => {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            borderBottom: '2px solid #d0e3f7',
-            background: `linear-gradient(135deg, ${palette.primary.main}15 0%, ${palette.primary.light}15 100%)`
+            borderBottom: '2px solid #d0e3f7'
           }}>
             <Typography
               variant="h6"
@@ -569,7 +784,7 @@ const CheckoutRequests: React.FC = () => {
               </Box>
             ) : (
               <Table>
-                <TableHead sx={{ backgroundColor: `${palette.primary.main}08` }}>
+                <TableHead>
                   <TableRow>
                     <TableCell sx={{ fontWeight: 'bold' }}>رقم الطلب</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>العقار</TableCell>
@@ -612,26 +827,40 @@ const CheckoutRequests: React.FC = () => {
                           <IconButton
                             color="primary"
                             onClick={() => openStatusDialog(request.id, request.status)}
-                            sx={{ backgroundColor: `${palette.primary.main}15` }}
+                            sx={{ }}
                           >
                             <VisibilityIcon />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="إرسال إشعار للمستخدم">
+                        <Tooltip title="إرسال إشعار داخل التطبيق">
                           <IconButton
                             color="info"
-                            onClick={() => openNotificationDialog(request)}
-                            sx={{ backgroundColor: `${palette.info.main}15`, ml: 1 }}
+                            onClick={() => openInAppNotificationDialog(request)}
+                            sx={{ ml: 1 }}
                             disabled={!request.userId}
                           >
-                            <NotificationsIcon />
+                            <Badge badgeContent="داخلي" color="info" sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', height: '16px', minWidth: '16px' } }}>
+                              <NotificationsIcon />
+                            </Badge>
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="إرسال إشعار خارج التطبيق">
+                          <IconButton
+                            color="primary"
+                            onClick={() => openPushNotificationDialog(request)}
+                            sx={{ ml: 1 }}
+                            disabled={!request.userId}
+                          >
+                            <Badge badgeContent="خارجي" color="primary" sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', height: '16px', minWidth: '16px' } }}>
+                              <NotificationsIcon />
+                            </Badge>
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="حذف الطلب">
                           <IconButton
                             color="error"
                             onClick={() => openDeleteDialog(request.id)}
-                            sx={{ backgroundColor: `${palette.error.main}15`, ml: 1 }}
+                            sx={{ ml: 1 }}
                           >
                             <DeleteIcon />
                           </IconButton>
@@ -760,6 +989,140 @@ const CheckoutRequests: React.FC = () => {
             disabled={!notificationMessage || !notificationTitle}
           >
             إرسال
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* In-App Notification Dialog */}
+      <Dialog
+        open={inAppNotificationDialogOpen}
+        onClose={closeInAppNotificationDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ 
+          fontWeight: 600, 
+          color: 'info.main', 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1 
+        }}>
+          <NotificationsIcon />
+          إرسال إشعار داخل التطبيق
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            سيتم إرسال هذا الإشعار داخل التطبيق فقط للمستخدم {requestToNotify?.customerName || ''} بخصوص طلب حجز {requestToNotify?.propertyName || ''}
+          </DialogContentText>
+
+          <Alert severity="info" sx={{ mb: 2 }}>
+            هذا الإشعار سيظهر فقط داخل التطبيق في قائمة الإشعارات ولن يتم إرساله كإشعار دفعي.
+          </Alert>
+
+          <TextField
+            autoFocus
+            margin="dense"
+            label="عنوان الإشعار"
+            type="text"
+            fullWidth
+            value={notificationTitle}
+            onChange={(e) => setNotificationTitle(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            label="نص الإشعار"
+            type="text"
+            fullWidth
+            multiline
+            rows={4}
+            value={notificationMessage}
+            onChange={(e) => setNotificationMessage(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button 
+            onClick={closeInAppNotificationDialog} 
+            variant="outlined"
+            color="inherit"
+          >
+            إلغاء
+          </Button>
+          <Button 
+            onClick={handleSendInAppNotification} 
+            variant="contained"
+            color="info"
+            startIcon={<NotificationsIcon />}
+            disabled={!notificationMessage || !notificationTitle || loading}
+          >
+            {loading ? 'جارٍ الإرسال...' : 'إرسال الإشعار داخل التطبيق'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Push Notification Dialog */}
+      <Dialog
+        open={pushNotificationDialogOpen}
+        onClose={closePushNotificationDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ 
+          fontWeight: 600, 
+          color: 'primary.main', 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1 
+        }}>
+          <NotificationsIcon />
+          إرسال إشعار خارج التطبيق
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            سيتم إرسال هذا الإشعار خارج التطبيق (إشعار دفعي) للمستخدم {requestToNotify?.customerName || ''} بخصوص طلب حجز {requestToNotify?.propertyName || ''}
+          </DialogContentText>
+
+          <Alert severity="info" sx={{ mb: 2 }}>
+            هذا الإشعار سيظهر خارج التطبيق كإشعار دفعي على جهاز المستخدم ولن يظهر في قائمة الإشعارات داخل التطبيق.
+          </Alert>
+
+          <TextField
+            autoFocus
+            margin="dense"
+            label="عنوان الإشعار"
+            type="text"
+            fullWidth
+            value={notificationTitle}
+            onChange={(e) => setNotificationTitle(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            label="نص الإشعار"
+            type="text"
+            fullWidth
+            multiline
+            rows={4}
+            value={notificationMessage}
+            onChange={(e) => setNotificationMessage(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button 
+            onClick={closePushNotificationDialog} 
+            variant="outlined"
+            color="inherit"
+          >
+            إلغاء
+          </Button>
+          <Button 
+            onClick={handleSendPushNotification} 
+            variant="contained"
+            color="primary"
+            startIcon={<NotificationsIcon />}
+            disabled={!notificationMessage || !notificationTitle || loading}
+          >
+            {loading ? 'جارٍ الإرسال...' : 'إرسال الإشعار خارج التطبيق'}
           </Button>
         </DialogActions>
       </Dialog>

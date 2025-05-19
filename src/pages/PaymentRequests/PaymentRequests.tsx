@@ -56,6 +56,7 @@ import { palette } from '../../theme/palette';
 import { db } from '../../firebase/config';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { useNotifications } from '../../contexts/NotificationsContext';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 // تعريف واجهة لطلب الدفع
 interface PaymentRequest {
@@ -75,6 +76,73 @@ interface PaymentRequest {
   branch: string | null;
   current_balance: number | null;
 }
+
+// OneSignal Configuration
+const ONESIGNAL_APP_ID = '3136dbc6-c09c-4bca-b0aa-fe35421ac513';
+const ONESIGNAL_REST_API_KEY = 'os_v2_app_ge3nxrwatrf4vmfk7y2uegwfcoh7sdj2pttujimbv2rz3di7wkuasxw76ylt66ecvgc65sx4fuikh2dph23tq66ryq2gdog47mzg2ja';
+
+// دالة لإرسال إشعار عبر OneSignal
+const sendOneSignalNotification = async (
+  userId: string,
+  title: string,
+  message: string,
+  data: Record<string, any> = {}
+) => {
+  try {
+    console.log('Sending OneSignal notification to user:', userId);
+    
+    // تطهير معرف المستخدم من أي مسافات زائدة
+    const cleanUserId = userId.trim();
+    
+    // تبسيط الطلب للتركيز على العناصر الأساسية فقط
+    const payload = {
+      app_id: ONESIGNAL_APP_ID,
+      include_external_user_ids: [cleanUserId],
+      headings: { en: title },
+      contents: { en: message },
+      data: data,
+      // إزالة الإعدادات الإضافية التي قد تسبب مشاكل
+      priority: 10
+    };
+    
+    console.log('OneSignal simplified payload:', JSON.stringify(payload, null, 2));
+    
+    const response = await fetch('https://onesignal.com/api/v1/notifications', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${ONESIGNAL_REST_API_KEY}`,
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    const result = await response.json();
+    console.log('OneSignal API full response:', JSON.stringify(result, null, 2));
+    
+    // تحليل الاستجابة لمعرفة ما إذا كان الإرسال ناجحاً
+    if (!response.ok) {
+      console.error('OneSignal API error status:', response.status);
+      if (result.errors) {
+        console.error('OneSignal API detailed errors:', result.errors);
+        throw new Error(`OneSignal API errors: ${JSON.stringify(result.errors)}`);
+      } else {
+        throw new Error(`OneSignal API HTTP Error: ${response.status}`);
+      }
+    }
+    
+    if (result.recipients === 0) {
+      console.warn('Warning: No recipients received the notification. User may not have the app installed or token might be invalid.');
+    } else {
+      console.log(`Successfully sent to ${result.recipients} recipients`);
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Error sending OneSignal notification:', error);
+    throw error;
+  }
+};
 
 // مكون صفحة طلبات شحن الرصيد
 const PaymentRequests: React.FC = () => {
@@ -97,7 +165,11 @@ const PaymentRequests: React.FC = () => {
   const [currentRequest, setCurrentRequest] = useState<PaymentRequest | null>(null);
   const [rejectionReason, setRejectionReason] = useState<string>('');
   const [actionLoading, setActionLoading] = useState<boolean>(false);
+  
+  // حالة مربعات حوار الإشعارات
   const [sendNotificationDialogOpen, setSendNotificationDialogOpen] = useState<boolean>(false);
+  const [sendInAppNotificationDialogOpen, setSendInAppNotificationDialogOpen] = useState<boolean>(false);
+  const [sendPushNotificationDialogOpen, setSendPushNotificationDialogOpen] = useState<boolean>(false);
   const [notificationMessage, setNotificationMessage] = useState<string>('');
 
   // للتعامل مع الإشعارات
@@ -297,7 +369,39 @@ const PaymentRequests: React.FC = () => {
     setSendNotificationDialogOpen(true);
   };
 
-  // دالة إرسال الإشعار للمستخدم
+  // فتح مربع حوار إرسال إشعار داخل التطبيق
+  const handleOpenSendInAppNotificationDialog = (request: PaymentRequest) => {
+    setCurrentRequest(request);
+    
+    // تعيين رسالة مختلفة بناءً على حالة الطلب
+    if (request.status === 'approved') {
+      setNotificationMessage(`تم إضافة ${formatCurrency(request.amount)} إلى رصيد محفظتك بنجاح.`);
+    } else if (request.status === 'rejected') {
+      setNotificationMessage(`نأسف، تم رفض طلب شحن رصيد محفظتك بمبلغ ${formatCurrency(request.amount)}. يرجى التواصل معنا للمزيد من المعلومات.`);
+    } else {
+      setNotificationMessage(``);
+    }
+    
+    setSendInAppNotificationDialogOpen(true);
+  };
+
+  // فتح مربع حوار إرسال إشعار خارج التطبيق
+  const handleOpenSendPushNotificationDialog = (request: PaymentRequest) => {
+    setCurrentRequest(request);
+    
+    // تعيين رسالة مختلفة بناءً على حالة الطلب
+    if (request.status === 'approved') {
+      setNotificationMessage(`تم إضافة ${formatCurrency(request.amount)} إلى رصيد محفظتك بنجاح.`);
+    } else if (request.status === 'rejected') {
+      setNotificationMessage(`نأسف، تم رفض طلب شحن رصيد محفظتك بمبلغ ${formatCurrency(request.amount)}. يرجى التواصل معنا للمزيد من المعلومات.`);
+    } else {
+      setNotificationMessage(``);
+    }
+    
+    setSendPushNotificationDialogOpen(true);
+  };
+
+  // دالة إرسال الإشعار للمستخدم (داخل وخارج التطبيق)
   const sendNotificationToUser = async () => {
     if (!currentRequest || !notificationMessage.trim()) {
       setError('الرجاء إدخال نص الإشعار');
@@ -309,9 +413,72 @@ const PaymentRequests: React.FC = () => {
       
       // إنشاء إشعار جديد في Firestore مباشرة (ليس من خلال سياق الإشعارات)
       const timestamp = new Date();
+      const notificationId = `wallet_${currentRequest.id}_${Date.now()}`;
       
       // حفظ الإشعار مباشرة في مجموعة notifications في Firestore
-      await setDoc(doc(db, 'notifications', `wallet_${currentRequest.id}_${Date.now()}`), {
+      await setDoc(doc(db, 'notifications', notificationId), {
+        userId: currentRequest.user_id, // معرف المستخدم (مهم للفلترة)
+        title: 'شركة سهم محفظتك',
+        body: notificationMessage,
+        timestamp: timestamp,
+        isRead: false,
+        read: false,
+        targetScreen: 'wallet',
+        type: 'wallet',
+        additionalData: {
+          amount: currentRequest.amount,
+        }
+      });
+
+      // إرسال إشعار خارجي باستخدام OneSignal
+      try {
+        const oneSignalResult = await sendOneSignalNotification(
+          currentRequest.user_id,
+          'شركة سهم محفظتك',
+          notificationMessage,
+          {
+            type: 'wallet',
+            requestId: currentRequest.id,
+            amount: currentRequest.amount,
+            targetScreen: 'wallet'
+          }
+        );
+        
+        console.log('نتيجة إرسال إشعار OneSignal:', oneSignalResult);
+        setSuccess(`تم إرسال الإشعار للمستخدم ${currentRequest.user_name} بنجاح (داخل التطبيق وخارجه).`);
+      } catch (pushError) {
+        console.error('فشل إرسال إشعار OneSignal:', pushError);
+        // في حالة فشل إرسال الإشعار الخارجي، نعتبر العملية ناجحة لأننا أضفنا الإشعار بنجاح في Firestore على الأقل
+        setSuccess(`تم إرسال الإشعار للمستخدم ${currentRequest.user_name} بنجاح (داخل التطبيق فقط). لم يتم إرسال إشعار خارجي.`);
+      }
+      
+      setSendNotificationDialogOpen(false);
+      
+    } catch (err: any) {
+      console.error('Error sending notification:', err);
+      setError('حدث خطأ أثناء إرسال الإشعار: ' + err.message);
+    } finally {
+      setActionLoading(false);
+      setCurrentRequest(null);
+    }
+  };
+
+  // دالة إرسال الإشعار داخل التطبيق فقط
+  const sendInAppNotification = async () => {
+    if (!currentRequest || !notificationMessage.trim()) {
+      setError('الرجاء إدخال نص الإشعار');
+      return;
+    }
+    
+    try {
+      setActionLoading(true);
+      
+      // إنشاء إشعار جديد في Firestore مباشرة (ليس من خلال سياق الإشعارات)
+      const timestamp = new Date();
+      const notificationId = `wallet_${currentRequest.id}_${Date.now()}`;
+      
+      // حفظ الإشعار مباشرة في مجموعة notifications في Firestore
+      await setDoc(doc(db, 'notifications', notificationId), {
         userId: currentRequest.user_id, // معرف المستخدم (مهم للفلترة)
         title: 'شركة سهم محفظتك',
         body: notificationMessage,
@@ -325,12 +492,48 @@ const PaymentRequests: React.FC = () => {
         }
       });
       
-      setSuccess(`تم إرسال الإشعار للمستخدم ${currentRequest.user_name} بنجاح.`);
-      setSendNotificationDialogOpen(false);
+      setSuccess(`تم إرسال الإشعار للمستخدم ${currentRequest.user_name} بنجاح (داخل التطبيق فقط).`);
+      setSendInAppNotificationDialogOpen(false);
       
     } catch (err: any) {
-      console.error('Error sending notification:', err);
-      setError('حدث خطأ أثناء إرسال الإشعار: ' + err.message);
+      console.error('Error sending in-app notification:', err);
+      setError('حدث خطأ أثناء إرسال الإشعار داخل التطبيق: ' + err.message);
+    } finally {
+      setActionLoading(false);
+      setCurrentRequest(null);
+    }
+  };
+
+  // دالة إرسال الإشعار خارج التطبيق فقط
+  const sendPushNotification = async () => {
+    if (!currentRequest || !notificationMessage.trim()) {
+      setError('الرجاء إدخال نص الإشعار');
+      return;
+    }
+    
+    try {
+      setActionLoading(true);
+      
+      // إرسال إشعار خارجي باستخدام OneSignal
+      const oneSignalResult = await sendOneSignalNotification(
+        currentRequest.user_id,
+        'شركة سهم محفظتك',
+        notificationMessage,
+        {
+          type: 'wallet',
+          requestId: currentRequest.id,
+          amount: currentRequest.amount,
+          targetScreen: 'wallet'
+        }
+      );
+      
+      console.log('نتيجة إرسال إشعار OneSignal:', oneSignalResult);
+      setSuccess(`تم إرسال الإشعار للمستخدم ${currentRequest.user_name} بنجاح (خارج التطبيق فقط).`);
+      setSendPushNotificationDialogOpen(false);
+      
+    } catch (err: any) {
+      console.error('Error sending push notification:', err);
+      setError('حدث خطأ أثناء إرسال الإشعار خارج التطبيق: ' + err.message);
     } finally {
       setActionLoading(false);
       setCurrentRequest(null);
@@ -632,8 +835,7 @@ const PaymentRequests: React.FC = () => {
               justifyContent: 'space-between',
               alignItems: 'center',
               borderBottom: '1px solid',
-              borderColor: 'divider',
-              backgroundImage: 'linear-gradient(to right, rgba(25, 118, 210, 0.05), rgba(25, 118, 210, 0.02))'
+              borderColor: 'divider'
             }}
           >
             <Typography 
@@ -679,7 +881,6 @@ const PaymentRequests: React.FC = () => {
           <TableContainer>
             <Table sx={{ minWidth: 650 }}>
               <TableHead sx={{ 
-                background: 'linear-gradient(to bottom, #f9f9f9, #f5f5f5)',
                 borderBottom: '2px solid rgba(25, 118, 210, 0.1)'
               }}>
                 <TableRow>
@@ -1040,66 +1241,45 @@ const PaymentRequests: React.FC = () => {
                               </IconButton>
                             </Tooltip>
                           </Box>
-                        ) : request.status === 'approved' ? (
-                          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
-                            <Chip
-                              label="تمت الموافقة"
-                              size="small"
-                              color="success"
-                              variant="outlined"
-                              sx={{ fontWeight: 500, fontSize: '0.7rem' }}
-                            />
-                            <Tooltip title="إرسال إشعار للمستخدم">
-                              <IconButton
-                                size="small"
-                                color="primary"
-                                onClick={() => handleOpenSendNotificationDialog(request)}
-                                sx={{ 
-                                  bgcolor: 'primary.lighter', 
-                                  '&:hover': { 
-                                    bgcolor: 'primary.light',
-                                    transform: 'scale(1.1)' 
-                                  }
-                                }}
-                              >
-                                <NotificationsIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
-                        ) : request.status === 'rejected' ? (
-                          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
-                            <Chip
-                              label="تم الرفض"
-                              size="small"
-                              color="error"
-                              variant="outlined"
-                              sx={{ fontWeight: 500, fontSize: '0.7rem' }}
-                            />
-                            <Tooltip title="إرسال إشعار للمستخدم">
-                              <IconButton
-                                size="small"
-                                color="primary"
-                                onClick={() => handleOpenSendNotificationDialog(request)}
-                                sx={{ 
-                                  bgcolor: 'primary.lighter', 
-                                  '&:hover': { 
-                                    bgcolor: 'primary.light',
-                                    transform: 'scale(1.1)' 
-                                  }
-                                }}
-                              >
-                                <NotificationsIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
                         ) : (
-                          <Chip
-                            label="غير معروف"
-                            size="small"
-                            color="default"
-                            variant="outlined"
-                            sx={{ fontWeight: 500, fontSize: '0.7rem' }}
-                          />
+                          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                            <Tooltip title="إرسال إشعار داخل التطبيق">
+                              <IconButton
+                                size="small"
+                                color="info"
+                                onClick={() => handleOpenSendInAppNotificationDialog(request)}
+                                sx={{ 
+                                  bgcolor: 'info.lighter', 
+                                  '&:hover': { 
+                                    bgcolor: 'info.light',
+                                    transform: 'scale(1.1)' 
+                                  }
+                                }}
+                              >
+                                <Badge badgeContent="داخلي" color="info" sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', height: '16px', minWidth: '16px' } }}>
+                                  <NotificationsIcon fontSize="small" />
+                                </Badge>
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="إرسال إشعار خارج التطبيق">
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                onClick={() => handleOpenSendPushNotificationDialog(request)}
+                                sx={{ 
+                                  bgcolor: 'primary.lighter', 
+                                  '&:hover': { 
+                                    bgcolor: 'primary.light',
+                                    transform: 'scale(1.1)' 
+                                  }
+                                }}
+                              >
+                                <Badge badgeContent="خارجي" color="primary" sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', height: '16px', minWidth: '16px' } }}>
+                                  <NotificationsIcon fontSize="small" />
+                                </Badge>
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
                         )}
                       </TableCell>
                     </TableRow>
@@ -1512,6 +1692,200 @@ const PaymentRequests: React.FC = () => {
               disabled={actionLoading}
             >
               {actionLoading ? 'جارٍ الإرسال...' : 'إرسال الإشعار'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* مربع حوار إرسال الإشعار داخل التطبيق فقط */}
+        <Dialog
+          open={sendInAppNotificationDialogOpen}
+          onClose={() => setSendInAppNotificationDialogOpen(false)}
+          PaperProps={{
+            sx: {
+              borderRadius: 3,
+              boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)'
+            }
+          }}
+        >
+          <DialogTitle sx={{ 
+            fontWeight: 600, 
+            color: 'info.main', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1 
+          }}>
+            <NotificationsIcon />
+            إرسال إشعار داخل التطبيق
+          </DialogTitle>
+          <DialogContent>
+            <DialogContentText sx={{ mb: 2 }}>
+              سيتم إرسال إشعار داخل التطبيق فقط للمستخدم. يمكنك تعديل نص الإشعار.
+            </DialogContentText>
+            
+            {currentRequest && (
+              <Box sx={{ 
+                bgcolor: 'background.neutral', 
+                p: 2, 
+                borderRadius: 2, 
+                mb: 2,
+                textAlign: 'center'
+              }}>
+                <Grid container spacing={2} alignItems="center">
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body2" color="text.secondary">
+                      المستخدم
+                    </Typography>
+                    <Typography variant="body1" fontWeight={600}>
+                      {currentRequest.user_name}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body2" color="text.secondary">
+                      المبلغ
+                    </Typography>
+                    <Typography 
+                      variant="body1" 
+                      fontWeight={700} 
+                      color="success.main"
+                      sx={{ direction: 'ltr' }}
+                    >
+                      {formatCurrency(currentRequest.amount)}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </Box>
+            )}
+            
+            <Alert severity="info" sx={{ mb: 2 }}>
+              هذا الإشعار سيظهر فقط داخل التطبيق في قائمة الإشعارات ولن يتم إرساله كإشعار دفعي.
+            </Alert>
+            
+            <TextField
+              autoFocus
+              margin="dense"
+              label="نص الإشعار"
+              type="text"
+              fullWidth
+              multiline
+              rows={4}
+              value={notificationMessage}
+              onChange={(e) => setNotificationMessage(e.target.value)}
+              sx={{ my: 2 }}
+            />
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 3 }}>
+            <Button 
+              onClick={() => setSendInAppNotificationDialogOpen(false)}
+              variant="outlined"
+              color="inherit"
+            >
+              إلغاء
+            </Button>
+            <Button 
+              onClick={sendInAppNotification}
+              variant="contained"
+              color="info"
+              startIcon={<NotificationsIcon />}
+              disabled={actionLoading}
+            >
+              {actionLoading ? 'جارٍ الإرسال...' : 'إرسال الإشعار داخل التطبيق'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* مربع حوار إرسال الإشعار خارج التطبيق فقط */}
+        <Dialog
+          open={sendPushNotificationDialogOpen}
+          onClose={() => setSendPushNotificationDialogOpen(false)}
+          PaperProps={{
+            sx: {
+              borderRadius: 3,
+              boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)'
+            }
+          }}
+        >
+          <DialogTitle sx={{ 
+            fontWeight: 600, 
+            color: 'primary.main', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1 
+          }}>
+            <NotificationsIcon />
+            إرسال إشعار خارج التطبيق
+          </DialogTitle>
+          <DialogContent>
+            <DialogContentText sx={{ mb: 2 }}>
+              سيتم إرسال إشعار خارج التطبيق (إشعار دفعي) للمستخدم. يمكنك تعديل نص الإشعار.
+            </DialogContentText>
+            
+            {currentRequest && (
+              <Box sx={{ 
+                bgcolor: 'background.neutral', 
+                p: 2, 
+                borderRadius: 2, 
+                mb: 2,
+                textAlign: 'center'
+              }}>
+                <Grid container spacing={2} alignItems="center">
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body2" color="text.secondary">
+                      المستخدم
+                    </Typography>
+                    <Typography variant="body1" fontWeight={600}>
+                      {currentRequest.user_name}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body2" color="text.secondary">
+                      المبلغ
+                    </Typography>
+                    <Typography 
+                      variant="body1" 
+                      fontWeight={700} 
+                      color="success.main"
+                      sx={{ direction: 'ltr' }}
+                    >
+                      {formatCurrency(currentRequest.amount)}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </Box>
+            )}
+            
+            <Alert severity="info" sx={{ mb: 2 }}>
+              هذا الإشعار سيظهر خارج التطبيق كإشعار دفعي على جهاز المستخدم ولن يظهر في قائمة الإشعارات داخل التطبيق.
+            </Alert>
+            
+            <TextField
+              autoFocus
+              margin="dense"
+              label="نص الإشعار"
+              type="text"
+              fullWidth
+              multiline
+              rows={4}
+              value={notificationMessage}
+              onChange={(e) => setNotificationMessage(e.target.value)}
+              sx={{ my: 2 }}
+            />
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 3 }}>
+            <Button 
+              onClick={() => setSendPushNotificationDialogOpen(false)}
+              variant="outlined"
+              color="inherit"
+            >
+              إلغاء
+            </Button>
+            <Button 
+              onClick={sendPushNotification}
+              variant="contained"
+              color="primary"
+              startIcon={<NotificationsIcon />}
+              disabled={actionLoading}
+            >
+              {actionLoading ? 'جارٍ الإرسال...' : 'إرسال الإشعار خارج التطبيق'}
             </Button>
           </DialogActions>
         </Dialog>

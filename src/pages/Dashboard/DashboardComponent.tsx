@@ -508,10 +508,8 @@ const Dashboard: React.FC = () => {
           sx={{ 
             p: { xs: 3, sm: 4 }, 
             mb: 5,
-            backgroundImage: 'linear-gradient(to bottom right, rgba(255,255,255,0.5), rgba(255,255,255,0.4))',
-            backdropFilter: 'blur(8px)',
             borderRadius: 4,
-            border: '1px solid rgba(255,255,255,0.3)',
+            border: '1px solid rgba(0,0,0,0.05)',
             boxShadow: '0 10px 30px rgba(0,0,0,0.05)'
           }}
         >
@@ -533,7 +531,7 @@ const Dashboard: React.FC = () => {
                   justifyContent: 'center',
                   width: { xs: 42, sm: 50 },
                   height: { xs: 42, sm: 50 },
-                  backgroundImage: 'linear-gradient(45deg, #2196F3, #21CBF3)',
+                  bgcolor: 'primary.main',
                   borderRadius: '14px',
                   boxShadow: '0 5px 15px rgba(33, 150, 243, 0.2)',
                   mr: 2 
@@ -591,7 +589,6 @@ const Dashboard: React.FC = () => {
                 icon={<HomeIcon />}
                 onClick={() => navigate('/properties/new')}
                 color={palette.primary.main}
-                gradient="linear-gradient(to bottom right, rgba(33, 150, 243, 0.05), rgba(33, 150, 243, 0.1))"
               />
             </Grid>
 
@@ -602,7 +599,6 @@ const Dashboard: React.FC = () => {
                 icon={<PersonIcon />}
                 onClick={() => navigate('/owners')}
                 color={palette.success.main}
-                gradient="linear-gradient(to bottom right, rgba(76, 175, 80, 0.05), rgba(76, 175, 80, 0.1))"
               />
             </Grid>
 
@@ -613,7 +609,6 @@ const Dashboard: React.FC = () => {
                 icon={<CategoryIcon />}
                 onClick={() => navigate('/categories')}
                 color={palette.warning.main}
-                gradient="linear-gradient(to bottom right, rgba(255, 152, 0, 0.05), rgba(255, 152, 0, 0.1))"
               />
             </Grid>
 
@@ -624,7 +619,6 @@ const Dashboard: React.FC = () => {
                 icon={<PersonAddIcon />}
                 onClick={() => navigate('/users/new')}
                 color={palette.secondary.main}
-                gradient="linear-gradient(to bottom right, rgba(156, 39, 176, 0.05), rgba(156, 39, 176, 0.1))"
               />
             </Grid>
           </Grid>
@@ -636,10 +630,8 @@ const Dashboard: React.FC = () => {
           sx={{ 
             p: { xs: 3, sm: 4 }, 
             mb: 5,
-            backgroundImage: 'linear-gradient(to bottom right, rgba(255,255,255,0.5), rgba(255,255,255,0.4))',
-            backdropFilter: 'blur(8px)',
             borderRadius: 4,
-            border: '1px solid rgba(255,255,255,0.3)',
+            border: '1px solid rgba(0,0,0,0.05)',
             boxShadow: '0 10px 30px rgba(0,0,0,0.05)'
           }}
         >
@@ -661,9 +653,9 @@ const Dashboard: React.FC = () => {
                   justifyContent: 'center',
                   width: { xs: 42, sm: 50 },
                   height: { xs: 42, sm: 50 },
-                  backgroundImage: 'linear-gradient(45deg, #7B1FA2, #9C27B0)',
+                  bgcolor: 'primary.main',
                   borderRadius: '14px',
-                  boxShadow: '0 5px 15px rgba(156, 39, 176, 0.2)',
+                  boxShadow: '0 5px 15px rgba(33, 150, 243, 0.2)',
                   mr: 2 
                 }}
               >
@@ -719,7 +711,6 @@ const Dashboard: React.FC = () => {
                 icon={<CreditCardIcon />}
                 onClick={() => navigate('/payment-methods')}
                 color="#6A1B9A"
-                gradient="linear-gradient(to bottom right, rgba(106, 27, 154, 0.05), rgba(106, 27, 154, 0.1))"
               />
             </Grid>
 
@@ -730,7 +721,6 @@ const Dashboard: React.FC = () => {
                 icon={<WalletIcon />}
                 onClick={() => navigate('/payment-requests')}
                 color="#8E24AA"
-                gradient="linear-gradient(to bottom right, rgba(142, 36, 170, 0.05), rgba(142, 36, 170, 0.1))"
               />
             </Grid>
 
@@ -741,7 +731,6 @@ const Dashboard: React.FC = () => {
                 icon={<AttachMoneyIcon />}
                 onClick={() => navigate('/add-balance')}
                 color="#AB47BC"
-                gradient="linear-gradient(to bottom right, rgba(171, 71, 188, 0.05), rgba(171, 71, 188, 0.1))"
               />
             </Grid>
           </Grid>

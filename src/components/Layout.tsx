@@ -12,24 +12,8 @@ interface LayoutProps {
 
 // إنشاء دالة لاختيار الخلفية المناسبة بناءً على عنوان الصفحة
 const getBackgroundImage = (title: string): string => {
-  // سيتم تطبيق خلفيات مخصصة لكل صفحة
-  switch (title) {
-    case 'لوحة التحكم':
-      return 'url(/background1.webp)';
-    case 'المستخدمين':
-      return 'url(/background2.webp)';
-    case 'العقارات':
-      return 'url(/background3.webp)';
-    case 'الأقسام':
-      return 'url(/background4.webp)';
-    case 'طلبات الحجز':
-    case 'طلبات شحن رصيد':
-      return 'url(/background5.webp)';
-    default:
-      // للصفحات الأخرى، استخدام خلفية عشوائية
-      const randomBg = Math.floor(Math.random() * 5) + 1;
-      return `url(/background${randomBg}.webp)`;
-  }
+  // إزالة جميع الخلفيات وإرجاع سلسلة فارغة
+  return '';
 };
 
 interface MainProps {
@@ -48,26 +32,27 @@ const Main = styled(Box, {
   [theme.breakpoints.down('sm')]: {
     padding: theme.spacing(2),
   },
-  backgroundColor: theme.palette.mode === 'light' ? 'rgba(248, 250, 252, 0.6)' : 'rgba(15, 23, 42, 0.7)',
+  backgroundColor: theme.palette.mode === 'light' ? '#FFFFFF' : '#121212',
   minHeight: '100vh',
-  backgroundImage: backgroundImage,
-  backgroundSize: 'cover',
-  backgroundPosition: 'center',
-  backgroundAttachment: 'fixed',
-  backgroundRepeat: 'no-repeat',
   position: 'relative',
-  '&::before': {
-    content: '""',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: theme.palette.mode === 'light' 
-      ? 'rgba(255, 255, 255, 0.6)' 
-      : 'rgba(15, 23, 42, 0.65)',
-    zIndex: -1,
-  }
+  // إزالة خصائص الخلفية
+  // backgroundImage: backgroundImage,
+  // backgroundSize: 'cover',
+  // backgroundPosition: 'center',
+  // backgroundAttachment: 'fixed',
+  // backgroundRepeat: 'no-repeat',
+  // '&::before': {
+  //   content: '""',
+  //   position: 'absolute',
+  //   top: 0,
+  //   left: 0,
+  //   right: 0,
+  //   bottom: 0,
+  //   backgroundColor: theme.palette.mode === 'light' 
+  //     ? 'rgba(255, 255, 255, 0.6)' 
+  //     : 'rgba(15, 23, 42, 0.65)',
+  //   zIndex: -1,
+  // }
 }));
 
 const ContentWrapper = styled(Box)(({ theme }) => ({
@@ -94,7 +79,7 @@ export default function Layout({ children, title }: LayoutProps) {
       display: 'flex', 
       flexDirection: 'column',
       minHeight: '100vh',
-      backgroundColor: theme.palette.mode === 'light' ? '#f8fafc' : '#0f172a'
+      backgroundColor: theme.palette.mode === 'light' ? '#FFFFFF' : '#121212'
     }}>
       <CssBaseline />
       

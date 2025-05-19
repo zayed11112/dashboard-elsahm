@@ -3,6 +3,7 @@
  */
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
+const cors = require('cors')({ origin: true });
 
 // تهيئة Firebase Admin SDK
 admin.initializeApp();
@@ -11,6 +12,7 @@ admin.initializeApp();
  * إرسال إشعار Push للمستخدم
  */
 exports.sendPushNotification = functions.https.onCall(async (data, context) => {
+  // CORS already handled by onCall functions
   try {
     // التحقق من صلاحية المستخدم (يمكن إضافة المزيد من التحقق حسب الحاجة)
     if (!context.auth) {
@@ -80,6 +82,7 @@ exports.sendPushNotification = functions.https.onCall(async (data, context) => {
  * إضافة إشعار للمستخدم في Firestore وإرسال إشعار Push
  */
 exports.sendNotification = functions.https.onCall(async (data, context) => {
+  // CORS already handled by onCall functions
   try {
     // التحقق من صلاحية المستخدم
     if (!context.auth) {
@@ -102,8 +105,6 @@ exports.sendNotification = functions.https.onCall(async (data, context) => {
     // 1. إنشاء وثيقة الإشعار في Firestore
     const notificationRef = admin.firestore()
       .collection('notifications')
-      .doc(userId)
-      .collection('notifications')
       .doc();
       
     await notificationRef.set({
@@ -117,7 +118,7 @@ exports.sendNotification = functions.https.onCall(async (data, context) => {
       targetScreen,
     });
 
-    // 2. الحصول على FCM token للمستخدم
+    // 2. الحصول على FCM tokens للمستخدم من مصفوفة fcmTokens
     const userDoc = await admin.firestore().collection('users').doc(userId).get();
     
     if (!userDoc.exists) {
@@ -128,58 +129,61 @@ exports.sendNotification = functions.https.onCall(async (data, context) => {
     }
 
     const userData = userDoc.data();
-    const fcmToken = userData.fcmToken;
     
-    if (!fcmToken) {
-      throw new functions.https.HttpsError(
-        'failed-precondition',
-        `لم يتم العثور على FCM token للمستخدم: ${userId}`
-      );
+    // التحقق من وجود مصفوفة fcmTokens
+    if (!userData.fcmTokens || !Array.isArray(userData.fcmTokens) || userData.fcmTokens.length === 0) {
+      functions.logger.warn(`لم يتم العثور على FCM tokens للمستخدم: ${userId}`);
+      
+      // استخدام التوكن القديم اذا كان موجوداً (للتوافق مع الإصدارات القديمة)
+      if (userData.fcmToken) {
+        functions.logger.info(`استخدام توكن قديم للمستخدم: ${userId}`);
+        await sendSingleNotification(userData.fcmToken, title, body, type, notificationRef.id, targetScreen);
+      } else {
+        functions.logger.warn(`لا يمكن إرسال إشعار Push للمستخدم: ${userId} - لا يوجد أي token FCM`);
+      }
+      
+      return {
+        success: true,
+        notificationId: notificationRef.id,
+        messageId: null,
+        tokensCount: 0
+      };
     }
 
-    // 3. إرسال إشعار Push
-    const message = {
-      notification: {
-        title,
-        body,
-      },
-      data: {
-        click_action: 'FLUTTER_NOTIFICATION_CLICK',
-        type,
-        notification_id: notificationRef.id,
-        ...(targetScreen && { target_screen: targetScreen }),
-      },
-      token: fcmToken,
-      android: {
-        priority: 'high',
-        notification: {
-          sound: 'default',
-          priority: 'high',
-          channelId: 'high_importance_channel',
-        },
-      },
-      apns: {
-        payload: {
-          aps: {
-            sound: 'default',
-            badge: 1,
-            contentAvailable: true,
-          },
-        },
-      },
-    };
-
-    const response = await admin.messaging().send(message);
+    // 3. إرسال إشعار Push لكل جهاز
+    const tokens = userData.fcmTokens.map(tokenObj => tokenObj.token);
+    const validTokens = [];
+    const results = [];
     
-    functions.logger.info('تم إرسال الإشعار بنجاح', {
+    functions.logger.info(`إرسال إشعار إلى ${tokens.length} جهاز للمستخدم ${userId}`);
+    
+    // إرسال إشعار لكل توكن
+    for (let i = 0; i < tokens.length; i++) {
+      try {
+        const token = tokens[i];
+        if (!token) continue;
+        
+        validTokens.push(token);
+        const messageId = await sendSingleNotification(token, title, body, type, notificationRef.id, targetScreen);
+        results.push({ token, messageId });
+        
+        functions.logger.info(`تم إرسال الإشعار بنجاح للجهاز ${i+1}`, { messageId });
+      } catch (err) {
+        functions.logger.error(`فشل إرسال الإشعار للجهاز ${i+1}`, { error: err });
+      }
+    }
+    
+    functions.logger.info('تم إرسال الإشعارات بنجاح', {
       notificationId: notificationRef.id,
-      messageId: response,
+      tokensCount: validTokens.length,
+      results,
     });
 
     return {
       success: true,
       notificationId: notificationRef.id,
-      messageId: response
+      tokensCount: validTokens.length,
+      results,
     };
   } catch (error) {
     functions.logger.error('خطأ في إرسال الإشعار', { error });
@@ -187,10 +191,47 @@ exports.sendNotification = functions.https.onCall(async (data, context) => {
   }
 });
 
+// دالة مساعدة لإرسال إشعار لتوكن واحد
+async function sendSingleNotification(token, title, body, type, notificationId, targetScreen = null) {
+  const message = {
+    notification: {
+      title,
+      body,
+    },
+    data: {
+      click_action: 'FLUTTER_NOTIFICATION_CLICK',
+      type,
+      notification_id: notificationId,
+      ...(targetScreen && { target_screen: targetScreen }),
+    },
+    token: token,
+    android: {
+      priority: 'high',
+      notification: {
+        sound: 'default',
+        priority: 'high',
+        channelId: 'high_importance_channel',
+      },
+    },
+    apns: {
+      payload: {
+        aps: {
+          sound: 'default',
+          badge: 1,
+          contentAvailable: true,
+        },
+      },
+    },
+  };
+
+  return await admin.messaging().send(message);
+}
+
 /**
  * دالة لإرسال إشعار عند الموافقة على طلب شحن الرصيد
  */
 exports.sendWalletRechargeNotification = functions.https.onCall(async (data, context) => {
+  // CORS already handled by onCall functions
   try {
     // التحقق من صلاحية المستخدم
     if (!context.auth) {
@@ -209,18 +250,23 @@ exports.sendWalletRechargeNotification = functions.https.onCall(async (data, con
       );
     }
 
-    // استخدام دالة sendNotification السابقة لإرسال إشعار شحن الرصيد
-    return await exports.sendNotification.run({
-      userId,
-      title: 'تم شحن رصيدك بنجاح',
-      body: `تم إضافة ${amount} ${currency} إلى رصيد محفظتك بنجاح`,
-      type: 'wallet',
-      targetScreen: 'walletScreen',
-      additionalData: {
-        amount,
-        currency
-      }
+    // استخدام دالة sendNotification للإرسال
+    const result = await exports.sendNotification({
+      data: {
+        userId,
+        title: 'تم شحن رصيدك بنجاح',
+        body: `تم إضافة ${amount} ${currency} إلى رصيد محفظتك بنجاح`,
+        type: 'wallet',
+        targetScreen: 'walletScreen',
+        additionalData: {
+          amount,
+          currency
+        }
+      },
+      auth: context.auth
     });
+
+    return result;
   } catch (error) {
     functions.logger.error('خطأ في إرسال إشعار شحن الرصيد', { error });
     throw new functions.https.HttpsError('internal', error.message);

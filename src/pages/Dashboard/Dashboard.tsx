@@ -476,8 +476,6 @@ const Dashboard: React.FC = () => {
           sx={{ 
             p: { xs: 3, sm: 4 }, 
             mb: 5,
-            backgroundImage: 'linear-gradient(to bottom right, rgba(255,255,255,0.9), rgba(255,255,255,0.8))',
-            backdropFilter: 'blur(20px)',
             borderRadius: 4,
             border: '1px solid rgba(0,0,0,0.05)',
             boxShadow: '0 10px 30px rgba(0,0,0,0.05)'
@@ -602,8 +600,6 @@ const Dashboard: React.FC = () => {
           sx={{ 
             p: { xs: 3, sm: 4 }, 
             mb: 5,
-            backgroundImage: 'linear-gradient(to bottom right, rgba(255,255,255,0.9), rgba(255,255,255,0.8))',
-            backdropFilter: 'blur(20px)',
             borderRadius: 4,
             border: '1px solid rgba(0,0,0,0.05)',
             boxShadow: '0 10px 30px rgba(0,0,0,0.05)'

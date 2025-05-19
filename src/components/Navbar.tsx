@@ -493,7 +493,7 @@ const NavBar: React.FC<NavBarProps> = ({ title }) => {
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
-        {userMenuItems}
+        {userMenuItems.map((item) => item)}
       </Menu>
 
       {/* Mobile Drawer Navigation */}

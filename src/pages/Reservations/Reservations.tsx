@@ -502,7 +502,6 @@ const Reservations: React.FC = () => {
             justifyContent: 'space-between',
             alignItems: 'center',
             borderBottom: '2px solid #d0e3f7',
-            background: `linear-gradient(135deg, ${palette.primary.main}15 0%, ${palette.primary.light}15 100%)`
           }}>
             <Typography
               variant="h6"
