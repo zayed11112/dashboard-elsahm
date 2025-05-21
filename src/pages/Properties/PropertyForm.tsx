@@ -31,6 +31,11 @@ import {
   ListItemIcon,
   ListItemSecondaryAction,
   Autocomplete,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -79,6 +84,7 @@ interface Property {
   type: string;
   price: number;
   commission: number;
+  deposit: number;
   bedrooms: number;
   beds: number;
   floor: string;
@@ -108,6 +114,7 @@ const PropertyForm: React.FC = () => {
     type: 'apartment',
     price: 0,
     commission: 0,
+    deposit: 0,
     bedrooms: 1,
     beds: 1,
     floor: '',
@@ -139,6 +146,13 @@ const PropertyForm: React.FC = () => {
   const [searchOwnerTerm, setSearchOwnerTerm] = useState('');
   const [selectedOwner, setSelectedOwner] = useState<SupabaseOwner | null>(null);
   const [loadingOwners, setLoadingOwners] = useState(false);
+
+  // State for video preview
+  const [previewVideo, setPreviewVideo] = useState<string | null>(null);
+
+  // State for confirm dialog
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   // Load property data if in edit mode
   useEffect(() => {
@@ -263,6 +277,18 @@ const PropertyForm: React.FC = () => {
     });
   };
 
+  // Function to preview video before adding
+  const handlePreviewVideo = () => {
+    if (newVideo.trim()) {
+      setPreviewVideo(newVideo.trim());
+    }
+  };
+
+  // Function to close video preview
+  const handleClosePreview = () => {
+    setPreviewVideo(null);
+  };
+
   // Handle adding a video URL
   const handleAddVideo = () => {
     if (newVideo.trim() && !property.videos.includes(newVideo.trim())) {
@@ -271,6 +297,8 @@ const PropertyForm: React.FC = () => {
         videos: [...property.videos, newVideo.trim()],
       });
       setNewVideo('');
+      setPreviewVideo(null); // Close preview after adding
+      setSuccess('تم إضافة الفيديو بنجاح');
     }
   };
 
@@ -354,18 +382,28 @@ const PropertyForm: React.FC = () => {
     });
   };
 
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Handle opening confirm dialog
+  const handleOpenConfirmDialog = (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Validate form
+    
+    // Validate form before showing confirmation
     if (!property.name || !property.address || !property.type || property.price <= 0 || property.bedrooms <= 0 || property.beds <= 0) {
       setError('يرجى ملء جميع الحقول المطلوبة بشكل صحيح');
       return;
     }
+    
+    setConfirmDialogOpen(true);
+  };
 
+  // Handle closing confirm dialog
+  const handleCloseConfirmDialog = () => {
+    setConfirmDialogOpen(false);
+  };
+
+  // Handle form submission
+  const handleSubmit = async () => {
     try {
-      setSaving(true);
+      setSubmitting(true);
       setError(null);
 
       // إذا تم إدخال اسم المالك ورقم الهاتف ولم يتم اختيار مالك من القائمة
@@ -388,6 +426,10 @@ const PropertyForm: React.FC = () => {
         }
       }
 
+      // تأكد من أن الفيديوهات هي مصفوفة (Array) وليست فارغة
+      const cleanedVideos = property.videos.filter(video => video.trim() !== '');
+      console.log('Videos being saved:', cleanedVideos);
+
       // Convert to Supabase property format
       const supabaseProperty: SupabaseProperty = {
         name: property.name,
@@ -395,6 +437,7 @@ const PropertyForm: React.FC = () => {
         type: property.type,
         price: property.price || 0, // تأكد من أن السعر 0 إذا لم يتم تحديده
         commission: property.commission || 0, // تأكد من أن العمولة 0 إذا لم يتم تحديدها
+        deposit: property.deposit || 0, // تأكد من أن العربون 0 إذا لم يتم تحديده
         bedrooms: property.bedrooms,
         beds: property.beds,
         floor: property.floor,
@@ -403,7 +446,7 @@ const PropertyForm: React.FC = () => {
         description: property.description,
         features: property.features,
         images: property.images,
-        videos: property.videos,
+        videos: cleanedVideos, // استخدام المصفوفة المنظفة من الفيديوهات
         drive_images: property.drive_images,
         owner_id: ownerId,
         owner_name: property.owner_name,
@@ -426,7 +469,8 @@ const PropertyForm: React.FC = () => {
       console.error('Error saving property:', err);
       setError('حدث خطأ أثناء حفظ العقار. يرجى المحاولة مرة أخرى.');
     } finally {
-      setSaving(false);
+      setSubmitting(false);
+      setConfirmDialogOpen(false);
     }
   };
 
@@ -470,7 +514,7 @@ const PropertyForm: React.FC = () => {
           )}
 
           {/* Property form */}
-          <Box component="form" onSubmit={handleSubmit}>
+          <Box component="form" onSubmit={handleOpenConfirmDialog}>
             <Grid container spacing={3}>
               {/* Basic Info Section */}
               <Grid item xs={12}>
@@ -642,6 +686,46 @@ const PropertyForm: React.FC = () => {
                     name="commission"
                     type="number"
                     value={property.commission}
+                    onChange={handleChange}
+                    inputProps={{ min: 0 }}
+                    InputProps={{
+                      endAdornment: <InputAdornment position="end" sx={{ ml: 0 }}>ج.م</InputAdornment>,
+                    }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                      },
+                      '& .MuiInputLabel-root': {
+                        fontWeight: 'bold'
+                      }
+                    }}
+                  />
+                </Paper>
+              </Grid>
+
+              {/* Deposit - العربون بتصميم مميز */}
+              <Grid item xs={12}>
+                <Paper
+                  elevation={3}
+                  sx={{
+                    p: 2,
+                    mt: 2,
+                    borderRadius: 2,
+                    border: '2px solid #2196f3',
+                    background: 'linear-gradient(to right, rgba(33, 150, 243, 0.1), rgba(33, 150, 243, 0.05))'
+                  }}
+                >
+                  <Typography variant="subtitle1" fontWeight="bold" color="#1565c0" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
+                    <MonetizationOnIcon sx={{ mr: 1 }} /> العربون
+                  </Typography>
+
+                  <TextField
+                    fullWidth
+                    label="قيمة العربون"
+                    name="deposit"
+                    type="number"
+                    value={property.deposit}
                     onChange={handleChange}
                     inputProps={{ min: 0 }}
                     InputProps={{
@@ -932,7 +1016,7 @@ const PropertyForm: React.FC = () => {
               {/* Videos Section */}
               <Grid item xs={12}>
                 <Typography variant="subtitle1" fontWeight="bold" mt={2} mb={1} color="primary">
-                  فيديوهات (اختياري)
+                  فيديوهات العقار (اختياري)
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
               </Grid>
@@ -941,16 +1025,17 @@ const PropertyForm: React.FC = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                   <TextField
                     fullWidth
-                    label="رابط فيديو من Google Drive"
+                    label="رابط فيديو"
                     value={newVideo}
                     onChange={(e) => setNewVideo(e.target.value)}
-                    placeholder="https://drive.google.com/file/d/..."
+                    placeholder="https://epkaeyvfmkbanauyzjze.supabase.co/storage/v1/object/public/videos/example.mp4"
+                    helperText="يمكنك إضافة رابط مباشر للفيديو من Supabase"
                     sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                   />
                   <Button
                     variant="contained"
                     color="primary"
-                    onClick={handleAddVideo}
+                    onClick={handlePreviewVideo}
                     disabled={!newVideo.trim()}
                     sx={{ ml: 1, height: 56, borderRadius: 2 }}
                   >
@@ -958,25 +1043,111 @@ const PropertyForm: React.FC = () => {
                   </Button>
                 </Box>
 
-                <List>
-                  {property.videos.map((video, index) => (
-                    <ListItem key={index} sx={{ bgcolor: 'background.paper', mb: 1, borderRadius: 2 }}>
-                      <ListItemIcon>
-                        <VideoLibraryIcon color="primary" />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={`فيديو ${index + 1}`}
-                        secondary={video}
-                        sx={{ wordBreak: 'break-all' }}
-                      />
-                      <ListItemSecondaryAction>
-                        <IconButton edge="end" onClick={() => handleRemoveVideo(video)} color="error">
-                          <DeleteIcon />
-                        </IconButton>
-                      </ListItemSecondaryAction>
-                    </ListItem>
-                  ))}
-                </List>
+                {previewVideo && (
+                  <Box sx={{ mt: 2, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>
+                      معاينة الفيديو
+                    </Typography>
+                    <video
+                      src={previewVideo}
+                      controls
+                      style={{ width: '100%', maxHeight: '300px' }}
+                    />
+                    <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        onClick={handleClosePreview}
+                        sx={{ ml: 1 }}
+                      >
+                        إلغاء
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={handleAddVideo}
+                        sx={{ ml: 1 }}
+                      >
+                        إضافة الفيديو
+                      </Button>
+                    </Box>
+                  </Box>
+                )}
+
+                {property.videos.length > 0 ? (
+                  <>
+                    <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>
+                      تم إضافة {property.videos.length} فيديو
+                    </Typography>
+                    <List>
+                      {property.videos.map((video, index) => (
+                        <ListItem 
+                          key={index} 
+                          sx={{ 
+                            bgcolor: 'background.paper', 
+                            mb: 1, 
+                            borderRadius: 2,
+                            border: '1px solid',
+                            borderColor: 'divider'
+                          }}
+                        >
+                          <ListItemIcon>
+                            <VideoLibraryIcon color="primary" />
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <Typography fontWeight="bold">فيديو {index + 1}</Typography>
+                                {video.includes('supabase') && (
+                                  <Chip 
+                                    label="Supabase" 
+                                    size="small" 
+                                    color="info" 
+                                    sx={{ ml: 1, height: 20 }} 
+                                  />
+                                )}
+                              </Box>
+                            }
+                            secondary={
+                              <Typography 
+                                variant="body2" 
+                                sx={{ 
+                                  wordBreak: 'break-all',
+                                  maxWidth: '100%',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis'
+                                }}
+                              >
+                                {video}
+                              </Typography>
+                            }
+                          />
+                          <ListItemSecondaryAction>
+                            <Tooltip title="عرض الفيديو">
+                              <IconButton 
+                                edge="end" 
+                                color="primary"
+                                onClick={() => window.open(video, '_blank')}
+                                sx={{ mr: 1 }}
+                              >
+                                <VideoLibraryIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="حذف الفيديو">
+                              <IconButton edge="end" onClick={() => handleRemoveVideo(video)} color="error">
+                                <DeleteIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </ListItemSecondaryAction>
+                        </ListItem>
+                      ))}
+                    </List>
+                  </>
+                ) : (
+                  <Alert severity="info" sx={{ mt: 2 }}>
+                    لم تقم بإضافة أي فيديوهات بعد. يمكنك إضافة روابط فيديوهات من Supabase.
+                  </Alert>
+                )}
               </Grid>
 
               {/* Submit Button */}
@@ -986,17 +1157,104 @@ const PropertyForm: React.FC = () => {
                   variant="contained"
                   color="primary"
                   size="large"
-                  disabled={saving}
-                  startIcon={saving ? <CircularProgress size={24} /> : <SaveIcon />}
+                  disabled={submitting}
+                  startIcon={submitting ? <CircularProgress size={24} /> : <SaveIcon />}
                   sx={{ minWidth: 200, py: 1.5, borderRadius: 2 }}
                 >
-                  {saving ? 'جاري الحفظ...' : isEditMode ? 'حفظ التغييرات' : 'إضافة العقار'}
+                  {submitting ? 'جاري الحفظ...' : isEditMode ? 'حفظ التغييرات' : 'إضافة العقار'}
                 </Button>
               </Grid>
             </Grid>
           </Box>
         </Paper>
       </Box>
+
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={confirmDialogOpen}
+        onClose={handleCloseConfirmDialog}
+        aria-labelledby="confirm-dialog-title"
+        aria-describedby="confirm-dialog-description"
+      >
+        <DialogTitle id="confirm-dialog-title">
+          {isEditMode ? "تأكيد تحديث العقار" : "تأكيد إضافة العقار"}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="confirm-dialog-description">
+            هل أنت متأكد من حفظ بيانات العقار؟
+            
+            <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Typography variant="subtitle2" fontWeight="bold">
+                تفاصيل العقار:
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="body2" fontWeight="bold">السعر:</Typography>
+                <Typography variant="body2">{property.price} ج.م</Typography>
+              </Box>
+              {property.commission > 0 && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="body2" fontWeight="bold" color="#2e7d32">العمولة:</Typography>
+                  <Typography variant="body2" color="#2e7d32">{property.commission} ج.م</Typography>
+                </Box>
+              )}
+              {property.deposit > 0 && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="body2" fontWeight="bold" color="#1565c0">العربون:</Typography>
+                  <Typography variant="body2" color="#1565c0">{property.deposit} ج.م</Typography>
+                </Box>
+              )}
+            </Box>
+            
+            {property.videos.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 'bold' }}>
+                  فيديوهات العقار ({property.videos.length})
+                </Typography>
+                <List dense>
+                  {property.videos.map((video, index) => (
+                    <ListItem key={index} dense>
+                      <ListItemIcon>
+                        <VideoLibraryIcon fontSize="small" color="primary" />
+                      </ListItemIcon>
+                      <ListItemText 
+                        primary={`فيديو ${index + 1}`}
+                        secondary={
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              display: 'block',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              maxWidth: '100%'
+                            }}
+                          >
+                            {video}
+                          </Typography>
+                        }
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              </Box>
+            )}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseConfirmDialog} color="inherit">
+            إلغاء
+          </Button>
+          <Button 
+            onClick={handleSubmit} 
+            color="primary" 
+            variant="contained"
+            disabled={submitting}
+            startIcon={submitting ? <CircularProgress size={20} /> : <SaveIcon />}
+          >
+            {submitting ? 'جاري الحفظ...' : 'تأكيد الحفظ'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Layout>
   );
 };

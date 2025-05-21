@@ -9,6 +9,7 @@ export interface SupabaseProperty {
   type: string;              // النوع
   price: number;             // السعر
   commission: number;        // العمولة
+  deposit: number;           // العربون
   bedrooms: number;          // عدد الغرف
   beds: number;              // عدد السراير
   floor: string;             // الطابق
@@ -49,6 +50,7 @@ export const supabasePropertiesApi = {
         type: originalProperty.type,
         price: originalProperty.price,
         commission: originalProperty.commission || 0,
+        deposit: originalProperty.deposit || 0,
         bedrooms: originalProperty.bedrooms,
         beds: originalProperty.beds,
         floor: originalProperty.floor,
@@ -122,12 +124,23 @@ export const supabasePropertiesApi = {
   // Crear una nueva propiedad
   async create(property: SupabaseProperty) {
     try {
+      // قم بتنظيف المصفوفات للتأكد من أنها تُرسل بشكل صحيح
+      const cleanedProperty = {
+        ...property,
+        features: Array.isArray(property.features) ? property.features : [],
+        images: Array.isArray(property.images) ? property.images : [],
+        videos: Array.isArray(property.videos) ? property.videos : [],
+        drive_images: Array.isArray(property.drive_images) ? property.drive_images : []
+      };
+
+      console.log('Creating property with videos:', cleanedProperty.videos);
+
       // Insertar la propiedad sin verificar autenticación
       // Esto permite crear propiedades sin necesidad de iniciar sesión
       const { data, error } = await supabase
         .from('properties')
         .insert([{
-          ...property,
+          ...cleanedProperty,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }])
@@ -136,7 +149,7 @@ export const supabasePropertiesApi = {
       if (error) {
         console.error('Error creating property:', error);
         console.error('Property data sent:', {
-          ...property,
+          ...cleanedProperty,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         });
@@ -153,11 +166,32 @@ export const supabasePropertiesApi = {
   // Actualizar una propiedad existente
   async update(id: string, property: Partial<SupabaseProperty>) {
     try {
+      // قم بتنظيف المصفوفات للتأكد من أنها تُرسل بشكل صحيح
+      const cleanedProperty = {
+        ...property
+      };
+      
+      // التأكد من أن المصفوفات صالحة
+      if (property.features !== undefined) {
+        cleanedProperty.features = Array.isArray(property.features) ? property.features : [];
+      }
+      if (property.images !== undefined) {
+        cleanedProperty.images = Array.isArray(property.images) ? property.images : [];
+      }
+      if (property.videos !== undefined) {
+        cleanedProperty.videos = Array.isArray(property.videos) ? property.videos : [];
+      }
+      if (property.drive_images !== undefined) {
+        cleanedProperty.drive_images = Array.isArray(property.drive_images) ? property.drive_images : [];
+      }
+
+      console.log('Updating property with videos:', cleanedProperty.videos);
+
       // Actualizar la propiedad sin verificar autenticación
       const { data, error } = await supabase
         .from('properties')
         .update({
-          ...property,
+          ...cleanedProperty,
           updated_at: new Date().toISOString()
         })
         .eq('id', id)
