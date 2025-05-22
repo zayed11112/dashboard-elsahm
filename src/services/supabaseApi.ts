@@ -23,6 +23,7 @@ export interface SupabaseProperty {
   owner_id?: string;         // معرف المالك (اختياري)
   owner_name?: string;       // اسم المالك (اختياري)
   owner_phone?: string;      // رقم هاتف المالك (اختياري)
+  info_vip?: string;         // معلومات مميزة (اختياري)
   created_at?: string;
   updated_at?: string;
   user_id?: string;          // ID del usuario que creó la propiedad
@@ -61,6 +62,7 @@ export const supabasePropertiesApi = {
         images: originalProperty.images || [],
         videos: originalProperty.videos || [],
         drive_images: originalProperty.drive_images || [],
+        info_vip: originalProperty.info_vip || '',
         // Omitimos user_id para evitar el error de tipo de datos
       };
 
@@ -226,6 +228,27 @@ export const supabasePropertiesApi = {
       return { success: true };
     } catch (error) {
       console.error(`Error en delete property with ID ${id}:`, error);
+      throw error;
+    }
+  },
+
+  // تغيير حالة العقار (متاح/غير متاح)
+  async toggleAvailability(id: string, isAvailable: boolean) {
+    try {
+      const { data, error } = await supabase
+        .from('properties')
+        .update({ is_available: isAvailable, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select();
+
+      if (error) {
+        console.error(`Error toggling property availability with ID ${id}:`, error);
+        throw error;
+      }
+
+      return { data: data?.[0] };
+    } catch (error) {
+      console.error(`Error in toggleAvailability with ID ${id}:`, error);
       throw error;
     }
   }

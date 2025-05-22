@@ -15,6 +15,7 @@ import PropertyForm from './pages/Properties/PropertyForm';
 import Users from './pages/Users/Users';
 import UserForm from './pages/Users/UserForm';
 import Categories from './pages/Categories/Categories';
+import Places from './pages/Places/Places';
 import Owners from './pages/Owners/Owners';
 import OwnerDetails from './pages/Owners/OwnerDetails';
 import CheckoutRequests from './pages/CheckoutRequests/CheckoutRequests';
@@ -58,6 +59,9 @@ function App() {
 
                 {/* Categories routes */}
                 <Route path="/categories" element={<Categories />} />
+
+                {/* Places routes */}
+                <Route path="/places" element={<Places />} />
 
                 {/* Owners routes */}
                 <Route path="/owners" element={<Owners />} />

@@ -49,30 +49,32 @@ import {
   Check as CheckIcon,
   Close as CloseIcon,
   MonetizationOn as MonetizationOnIcon,
+  Category as CategoryIcon,
+  LocationOn as LocationOnIcon,
+  Star as StarIcon,
 } from '@mui/icons-material';
 import Layout from '../../components/Layout';
 import { supabasePropertiesApi, imgbbApi, SupabaseProperty } from '../../services/supabaseApi';
 import { supabaseOwnersApi, SupabaseOwner } from '../../services/ownersApi';
+import { categoriesApi, Category } from '../../services/categoriesApi';
+import { availablePlacesApi, AvailablePlace } from '../../services/availablePlacesApi';
 import { useNotifications } from '../../contexts/NotificationsContext';
-
-// Property type options
-const propertyTypes = [
-  { value: 'apartment', label: 'شقة' },
-  { value: 'villa', label: 'فيلا' },
-  { value: 'house', label: 'منزل' },
-  { value: 'studio', label: 'استوديو' },
-];
 
 // Property amenities options
 const amenities = [
-  { value: 'parking', label: 'موقف سيارة' },
-  { value: 'pool', label: 'مسبح' },
-  { value: 'gym', label: 'صالة رياضية' },
-  { value: 'elevator', label: 'مصعد' },
-  { value: 'security', label: 'حراسة أمنية' },
-  { value: 'wifi', label: 'واي فاي' },
-  { value: 'ac', label: 'تكييف' },
-  { value: 'furnished', label: 'مفروش' },
+  { value: 'تكيف', label: 'تكيف' },
+  { value: 'واي فاي', label: 'واي فاي' },
+  { value: 'متاح للسمر', label: 'متاح للسمر' },
+  { value: 'ترم جديد', label: 'ترم جديد' },
+  { value: 'بنات فقط', label: 'بنات فقط' },
+  { value: 'اولاد فقط', label: 'اولاد فقط' },
+  { value: 'عمارة بنات فقط', label: 'عمارة بنات فقط' },
+  { value: 'عمارة اولاد فقط', label: 'عمارة اولاد فقط' },
+  { value: 'شاشة', label: 'شاشة' },
+  { value: 'مراتب تاكي', label: 'مراتب تاكي' },
+  { value: 'غاز طبيعي', label: 'غاز طبيعي' },
+  { value: 'عماير حكومي', label: 'عماير حكومي' },
+  { value: 'عماير اهالي', label: 'عماير اهالي' },
 ];
 
 // Define the Property type for the form
@@ -97,6 +99,9 @@ interface Property {
   owner_id?: string;
   owner_name?: string;
   owner_phone?: string;
+  categories?: number[]; // إضافة حقل الأقسام
+  places?: number[]; // إضافة حقل الأماكن
+  info_vip?: string; // إضافة حقل المعلومات المميزة
 }
 
 const PropertyForm: React.FC = () => {
@@ -111,7 +116,7 @@ const PropertyForm: React.FC = () => {
     name: '',
     description: '',
     address: '',
-    type: 'apartment',
+    type: '',
     price: 0,
     commission: 0,
     deposit: 0,
@@ -126,6 +131,9 @@ const PropertyForm: React.FC = () => {
     drive_images: [],
     owner_name: '',
     owner_phone: '',
+    categories: [], // إضافة حقل الأقسام كقائمة فارغة
+    places: [], // إضافة حقل الأماكن كقائمة فارغة
+    info_vip: '', // إضافة حقل المعلومات المميزة
   });
 
   // Image upload state
@@ -133,7 +141,6 @@ const PropertyForm: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [newFeature, setNewFeature] = useState('');
   const [newVideo, setNewVideo] = useState('');
-  const [newDriveImage, setNewDriveImage] = useState('');
 
   // UI state
   const [loading, setLoading] = useState(isEditMode);
@@ -146,6 +153,16 @@ const PropertyForm: React.FC = () => {
   const [searchOwnerTerm, setSearchOwnerTerm] = useState('');
   const [selectedOwner, setSelectedOwner] = useState<SupabaseOwner | null>(null);
   const [loadingOwners, setLoadingOwners] = useState(false);
+
+  // Categories state
+  const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<Category[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+
+  // Places state
+  const [availablePlaces, setAvailablePlaces] = useState<AvailablePlace[]>([]);
+  const [selectedPlaces, setSelectedPlaces] = useState<AvailablePlace[]>([]);
+  const [loadingPlaces, setLoadingPlaces] = useState(false);
 
   // State for video preview
   const [previewVideo, setPreviewVideo] = useState<string | null>(null);
@@ -174,6 +191,38 @@ const PropertyForm: React.FC = () => {
               console.error('Error fetching owner:', err);
             }
           }
+
+          // جلب الأقسام المرتبطة بالعقار
+          try {
+            const categoriesResponse = await categoriesApi.getCategoriesForProperty(id);
+            if (categoriesResponse.data && categoriesResponse.data.length > 0) {
+              // تحديث القائمة المختارة
+              setSelectedCategories(categoriesResponse.data);
+              // تحديث معرفات الأقسام في نموذج العقار
+              setProperty(prev => ({
+                ...prev,
+                categories: categoriesResponse.data.map(cat => cat.id)
+              }));
+            }
+          } catch (err) {
+            console.error('Error fetching property categories:', err);
+          }
+
+          // جلب الأماكن المرتبطة بالعقار
+          try {
+            const placesResponse = await availablePlacesApi.getPlacesForProperty(id);
+            if (placesResponse.data && placesResponse.data.length > 0) {
+              // تحديث القائمة المختارة
+              setSelectedPlaces(placesResponse.data);
+              // تحديث معرفات الأماكن في نموذج العقار
+              setProperty(prev => ({
+                ...prev,
+                places: placesResponse.data.map(place => place.id)
+              }));
+            }
+          } catch (err) {
+            console.error('Error fetching property places:', err);
+          }
         } catch (err) {
           console.error('Error fetching property:', err);
           setError('حدث خطأ أثناء تحميل بيانات العقار. يرجى المحاولة مرة أخرى.');
@@ -185,6 +234,42 @@ const PropertyForm: React.FC = () => {
       fetchProperty();
     }
   }, [id, isEditMode]);
+
+  // جلب جميع الأقسام المتاحة عند تحميل الصفحة
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoadingCategories(true);
+        const response = await categoriesApi.getAll({ isActive: true });
+        setAvailableCategories(response.data);
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+        setError('حدث خطأ أثناء تحميل الأقسام. يرجى المحاولة مرة أخرى.');
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  // جلب جميع الأماكن المتاحة عند تحميل الصفحة
+  useEffect(() => {
+    const fetchPlaces = async () => {
+      try {
+        setLoadingPlaces(true);
+        const response = await availablePlacesApi.getAll({ isActive: true });
+        setAvailablePlaces(response.data);
+      } catch (err) {
+        console.error('Error fetching places:', err);
+        setError('حدث خطأ أثناء تحميل الأماكن. يرجى المحاولة مرة أخرى.');
+      } finally {
+        setLoadingPlaces(false);
+      }
+    };
+
+    fetchPlaces();
+  }, []);
 
   // البحث عن الملاك عند تغيير مصطلح البحث
   useEffect(() => {
@@ -310,25 +395,6 @@ const PropertyForm: React.FC = () => {
     });
   };
 
-  // Handle adding a Drive image URL
-  const handleAddDriveImage = () => {
-    if (newDriveImage.trim() && !property.drive_images.includes(newDriveImage.trim())) {
-      setProperty({
-        ...property,
-        drive_images: [...property.drive_images, newDriveImage.trim()],
-      });
-      setNewDriveImage('');
-    }
-  };
-
-  // Handle removing a Drive image
-  const handleRemoveDriveImage = (image: string) => {
-    setProperty({
-      ...property,
-      drive_images: property.drive_images.filter(img => img !== image),
-    });
-  };
-
   // Handle image upload
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -418,6 +484,24 @@ const PropertyForm: React.FC = () => {
     setConfirmDialogOpen(false);
   };
 
+  // معالجة اختيار الأقسام
+  const handleCategoryChange = (categories: Category[]) => {
+    setSelectedCategories(categories);
+    setProperty({
+      ...property,
+      categories: categories.map(cat => cat.id)
+    });
+  };
+
+  // معالجة اختيار الأماكن
+  const handlePlaceChange = (places: AvailablePlace[]) => {
+    setSelectedPlaces(places);
+    setProperty({
+      ...property,
+      places: places.map(place => place.id)
+    });
+  };
+
   // Handle form submission
   const handleSubmit = async () => {
     try {
@@ -469,19 +553,46 @@ const PropertyForm: React.FC = () => {
         owner_id: ownerId,
         owner_name: property.owner_name,
         owner_phone: property.owner_phone,
+        info_vip: property.info_vip || '', // إضافة حقل المعلومات المميزة
       };
+
+      let propertyId = '';
 
       if (isEditMode && id) {
         await supabasePropertiesApi.update(id, supabaseProperty);
+        propertyId = id;
         setSuccess('تم تحديث العقار بنجاح');
         await addNotification(`تم تحديث العقار: ${property.name}`, 'property');
       } else {
         const response = await supabasePropertiesApi.create(supabaseProperty);
+        propertyId = response.data.id;
         setSuccess('تم إضافة العقار بنجاح');
         await addNotification(`تم إضافة عقار جديد: ${property.name}`, 'property');
-        
-        // Navigate to the property page
-        navigate(`/properties/${response.data.id}`);
+      }
+
+      // حفظ الأقسام المرتبطة بالعقار
+      if (property.categories && property.categories.length > 0 && propertyId) {
+        try {
+          await categoriesApi.linkPropertyToCategories(propertyId, property.categories);
+        } catch (err) {
+          console.error('Error linking property to categories:', err);
+          setError('تم حفظ العقار ولكن حدثت مشكلة أثناء ربطه بالأقسام. يرجى التحقق من الأقسام لاحقاً.');
+        }
+      }
+
+      // حفظ الأماكن المرتبطة بالعقار
+      if (property.places && property.places.length > 0 && propertyId) {
+        try {
+          await availablePlacesApi.linkPropertyToPlaces(propertyId, property.places);
+        } catch (err) {
+          console.error('Error linking property to places:', err);
+          setError('تم حفظ العقار ولكن حدثت مشكلة أثناء ربطه بالأماكن. يرجى التحقق من الأماكن لاحقاً.');
+        }
+      }
+      
+      // Navigate to the property page if it's a new property
+      if (!isEditMode) {
+        navigate(`/properties/${propertyId}`);
       }
     } catch (err) {
       console.error('Error saving property:', err);
@@ -560,19 +671,12 @@ const PropertyForm: React.FC = () => {
                 <TextField
                   required
                   fullWidth
-                  select
                   label="نوع العقار"
                   name="type"
                   value={property.type}
                   onChange={handleChange}
                   sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                >
-                  {propertyTypes.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                />
               </Grid>
 
               {/* Address */}
@@ -600,6 +704,47 @@ const PropertyForm: React.FC = () => {
                   onChange={handleChange}
                   sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                 />
+              </Grid>
+
+              {/* Special VIP Information Section - بقسم تصميم مميز */}
+              <Grid item xs={12}>
+                <Paper
+                  elevation={3}
+                  sx={{
+                    p: 2,
+                    mt: 2,
+                    borderRadius: 2,
+                    border: '2px solid #9c27b0',
+                    background: 'linear-gradient(to right, rgba(156, 39, 176, 0.1), rgba(156, 39, 176, 0.05))'
+                  }}
+                >
+                  <Typography variant="subtitle1" fontWeight="bold" color="#7b1fa2" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
+                    <StarIcon sx={{ mr: 1 }} /> معلومات مميزة
+                  </Typography>
+                  
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={3}
+                    label="معلومات مميزة عن العقار"
+                    name="info_vip"
+                    value={property.info_vip || ''}
+                    onChange={handleChange}
+                    placeholder="أضف أي معلومات خاصة أو مميزة عن العقار"
+                    InputProps={{
+                      sx: { fontSize: '0.95rem' }
+                    }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                      },
+                      '& .MuiInputLabel-root': {
+                        fontWeight: 'bold'
+                      }
+                    }}
+                  />
+                </Paper>
               </Grid>
 
               {/* Details Section */}
@@ -981,56 +1126,6 @@ const PropertyForm: React.FC = () => {
                 </Grid>
               </Grid>
 
-              {/* Drive Images Section */}
-              <Grid item xs={12}>
-                <Typography variant="subtitle1" fontWeight="bold" mt={2} mb={1} color="primary">
-                  صور من Google Drive (اختياري)
-                </Typography>
-                <Divider sx={{ mb: 2 }} />
-              </Grid>
-
-              <Grid item xs={12}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <TextField
-                    fullWidth
-                    label="رابط صورة من Google Drive"
-                    value={newDriveImage}
-                    onChange={(e) => setNewDriveImage(e.target.value)}
-                    placeholder="https://drive.google.com/file/d/..."
-                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                  />
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={handleAddDriveImage}
-                    disabled={!newDriveImage.trim()}
-                    sx={{ ml: 1, height: 56, borderRadius: 2 }}
-                  >
-                    <AddIcon />
-                  </Button>
-                </Box>
-
-                <List>
-                  {property.drive_images.map((image, index) => (
-                    <ListItem key={index} sx={{ bgcolor: 'background.paper', mb: 1, borderRadius: 2 }}>
-                      <ListItemIcon>
-                        <ImageIcon color="primary" />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={`صورة ${index + 1}`}
-                        secondary={image}
-                        sx={{ wordBreak: 'break-all' }}
-                      />
-                      <ListItemSecondaryAction>
-                        <IconButton edge="end" onClick={() => handleRemoveDriveImage(image)} color="error">
-                          <DeleteIcon />
-                        </IconButton>
-                      </ListItemSecondaryAction>
-                    </ListItem>
-                  ))}
-                </List>
-              </Grid>
-
               {/* Videos Section */}
               <Grid item xs={12}>
                 <Typography variant="subtitle1" fontWeight="bold" mt={2} mb={1} color="primary">
@@ -1168,6 +1263,136 @@ const PropertyForm: React.FC = () => {
                 )}
               </Grid>
 
+              {/* Categories Section - إضافة قسم جديد للأقسام */}
+              <Grid item xs={12}>
+                <Typography variant="subtitle1" fontWeight="bold" mt={2} mb={1} color="primary" sx={{ display: 'flex', alignItems: 'center' }}>
+                  <CategoryIcon sx={{ mr: 1 }} /> الأقسام
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+              </Grid>
+
+              <Grid item xs={12}>
+                <Autocomplete
+                  multiple
+                  id="categories-selector"
+                  options={availableCategories}
+                  getOptionLabel={(option) => option.name}
+                  value={selectedCategories}
+                  loading={loadingCategories}
+                  onChange={(event, newValue) => handleCategoryChange(newValue)}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="اختر الأقسام"
+                      placeholder="اختر الأقسام المناسبة للعقار"
+                      InputProps={{
+                        ...params.InputProps,
+                        endAdornment: (
+                          <>
+                            {loadingCategories ? <CircularProgress color="inherit" size={20} /> : null}
+                            {params.InputProps.endAdornment}
+                          </>
+                        ),
+                      }}
+                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                    />
+                  )}
+                  renderOption={(props, option) => (
+                    <li {...props}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                        <Typography variant="body1">{option.name}</Typography>
+                      </Box>
+                    </li>
+                  )}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip
+                        icon={<CategoryIcon />}
+                        label={option.name}
+                        {...getTagProps({ index })}
+                        sx={{ m: 0.5 }}
+                      />
+                    ))
+                  }
+                  noOptionsText="لا توجد أقسام متاحة"
+                />
+
+                {selectedCategories.length > 0 ? (
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                    تم اختيار {selectedCategories.length} من الأقسام
+                  </Typography>
+                ) : (
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                    اختر الأقسام التي يظهر فيها العقار. يمكنك اختيار أكثر من قسم.
+                  </Typography>
+                )}
+              </Grid>
+
+              {/* Places Section - إضافة قسم جديد للأماكن */}
+              <Grid item xs={12}>
+                <Typography variant="subtitle1" fontWeight="bold" mt={2} mb={1} color="primary" sx={{ display: 'flex', alignItems: 'center' }}>
+                  <LocationOnIcon sx={{ mr: 1 }} /> الأماكن المتاحة
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+              </Grid>
+
+              <Grid item xs={12}>
+                <Autocomplete
+                  multiple
+                  id="places-selector"
+                  options={availablePlaces}
+                  getOptionLabel={(option) => option.name}
+                  value={selectedPlaces}
+                  loading={loadingPlaces}
+                  onChange={(event, newValue) => handlePlaceChange(newValue)}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="اختر الأماكن"
+                      placeholder="اختر الأماكن المتاحة للعقار"
+                      InputProps={{
+                        ...params.InputProps,
+                        endAdornment: (
+                          <>
+                            {loadingPlaces ? <CircularProgress color="inherit" size={20} /> : null}
+                            {params.InputProps.endAdornment}
+                          </>
+                        ),
+                      }}
+                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                    />
+                  )}
+                  renderOption={(props, option) => (
+                    <li {...props}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                        <Typography variant="body1">{option.name}</Typography>
+                      </Box>
+                    </li>
+                  )}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip
+                        icon={<LocationOnIcon />}
+                        label={option.name}
+                        {...getTagProps({ index })}
+                        sx={{ m: 0.5 }}
+                      />
+                    ))
+                  }
+                  noOptionsText="لا توجد أماكن متاحة"
+                />
+
+                {selectedPlaces.length > 0 ? (
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                    تم اختيار {selectedPlaces.length} من الأماكن
+                  </Typography>
+                ) : (
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                    اختر الأماكن المتاحة للعقار. يمكنك اختيار أكثر من مكان.
+                  </Typography>
+                )}
+              </Grid>
+
               {/* Submit Button */}
               <Grid item xs={12} sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
                 <Button
@@ -1219,6 +1444,60 @@ const PropertyForm: React.FC = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Typography variant="body2" fontWeight="bold" color="#1565c0">العربون:</Typography>
                   <Typography variant="body2" color="#1565c0">{property.deposit} ج.م</Typography>
+                </Box>
+              )}
+              
+              {/* عرض المعلومات المميزة في مربع التأكيد إذا وجدت */}
+              {property.info_vip && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="subtitle2" fontWeight="bold" color="#7b1fa2">معلومات مميزة:</Typography>
+                  <Box sx={{ 
+                    p: 1, 
+                    mt: 0.5, 
+                    bgcolor: 'rgba(156, 39, 176, 0.05)', 
+                    border: '1px solid rgba(156, 39, 176, 0.2)', 
+                    borderRadius: 1 
+                  }}>
+                    <Typography variant="body2">{property.info_vip}</Typography>
+                  </Box>
+                </Box>
+              )}
+              
+              {/* عرض الأقسام المختارة في مربع التأكيد */}
+              {selectedCategories.length > 0 && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="subtitle2" fontWeight="bold">الأقسام:</Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                    {selectedCategories.map((category) => (
+                      <Chip 
+                        key={category.id} 
+                        label={category.name} 
+                        size="small" 
+                        icon={<CategoryIcon fontSize="small" />} 
+                        variant="outlined" 
+                        sx={{ m: 0.2 }} 
+                      />
+                    ))}
+                  </Box>
+                </Box>
+              )}
+
+              {/* عرض الأماكن المختارة في مربع التأكيد */}
+              {selectedPlaces.length > 0 && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="subtitle2" fontWeight="bold">الأماكن:</Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                    {selectedPlaces.map((place) => (
+                      <Chip 
+                        key={place.id} 
+                        label={place.name} 
+                        size="small" 
+                        icon={<LocationOnIcon fontSize="small" />} 
+                        variant="outlined" 
+                        sx={{ m: 0.2 }} 
+                      />
+                    ))}
+                  </Box>
                 </Box>
               )}
             </Box>

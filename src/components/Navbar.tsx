@@ -144,6 +144,10 @@ const NavBar: React.FC<NavBarProps> = ({ title }) => {
       path: '/categories',
     },
     {
+      text: 'الأماكن',
+      path: '/places',
+    },
+    {
       text: 'طلبات الحجز',
       path: '/checkout-requests',
     },

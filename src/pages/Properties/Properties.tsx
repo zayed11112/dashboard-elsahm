@@ -52,6 +52,8 @@ import {
   Stairs as StairsIcon,
   ContentCopy as ContentCopyIcon,
   MonetizationOn as MonetizationOnIcon,
+  ToggleOn as ToggleOnIcon,
+  ToggleOff as ToggleOffIcon,
 } from '@mui/icons-material';
 import Layout from '../../components/Layout';
 import { supabasePropertiesApi, SupabaseProperty } from '../../services/supabaseApi';
@@ -82,6 +84,7 @@ interface Property {
   created_at: string;
   updated_at: string;
   description: string;
+  info_vip?: string;  // معلومات مميزة (اختياري) كنص وليس قيمة منطقية
 }
 
 // Property type options
@@ -252,6 +255,24 @@ const Properties: React.FC = () => {
     }
   };
 
+  // تغيير حالة العقار (متاح/غير متاح)
+  const handleToggleAvailability = async (id: string, currentStatus: boolean) => {
+    try {
+      setError(null);
+      
+      // استدعاء واجهة برمجة التطبيق لتبديل الحالة
+      await supabasePropertiesApi.toggleAvailability(id, !currentStatus);
+      
+      // تحديث حالة العقار في القائمة المحلية
+      setProperties(prev => prev.map(property => 
+        property.id === id ? { ...property, is_available: !currentStatus } : property
+      ));
+    } catch (err) {
+      console.error('Error toggling property availability:', err);
+      setError('حدث خطأ أثناء تغيير حالة العقار. يرجى المحاولة مرة أخرى.');
+    }
+  };
+
   // Format price as currency
   const formatPrice = (price: number) => {
     // تنسيق السعر بدون أصفار إضافية بالإنجليزية
@@ -266,12 +287,10 @@ const Properties: React.FC = () => {
     if (!properties.length) return {
       totalProperties: 0,
       availableProperties: 0,
-      apartments: 0,
       expectedProfit: 0,
     };
 
     const availableProperties = properties.filter(property => property.is_available).length;
-    const apartments = properties.filter(property => property.type === 'apartment').length;
     // حساب مجموع العمولات (الأرباح المتوقعة)
     const expectedProfit = properties.reduce((total, property) =>
       total + (property.commission || 0), 0);
@@ -279,7 +298,6 @@ const Properties: React.FC = () => {
     return {
       totalProperties: properties.length,
       availableProperties,
-      apartments,
       expectedProfit,
     };
   }, [properties]);
@@ -308,7 +326,7 @@ const Properties: React.FC = () => {
         {/* Stats Cards */}
         <ResponsiveContainer>
           <ResponsiveGrid container spacing={3} sx={{ mb: 4 }}>
-            <ResponsiveGrid item xs={12} sm={6} md={3}>
+            <ResponsiveGrid item xs={12} sm={6} md={4}>
               <StatCard
                 title="إجمالي العقارات"
                 value={propertyStats.totalProperties}
@@ -320,7 +338,7 @@ const Properties: React.FC = () => {
                 }}
               />
             </ResponsiveGrid>
-            <ResponsiveGrid item xs={12} sm={6} md={3}>
+            <ResponsiveGrid item xs={12} sm={6} md={4}>
               <StatCard
                 title="العقارات المتاحة"
                 value={propertyStats.availableProperties}
@@ -329,16 +347,7 @@ const Properties: React.FC = () => {
                 onClick={() => setAvailabilityFilter('available')}
               />
             </ResponsiveGrid>
-            <ResponsiveGrid item xs={12} sm={6} md={3}>
-              <StatCard
-                title="الشقق"
-                value={propertyStats.apartments}
-                icon={<ApartmentIcon />}
-                color={palette.info.main}
-                onClick={() => setTypeFilter('apartment')}
-              />
-            </ResponsiveGrid>
-            <ResponsiveGrid item xs={12} sm={6} md={3}>
+            <ResponsiveGrid item xs={12} sm={6} md={4}>
               <StatCard
                 title="الأرباح المتوقعة"
                 value={formatPrice(propertyStats.expectedProfit)}
@@ -594,7 +603,23 @@ const Properties: React.FC = () => {
                               <HomeWorkIcon color="primary" fontSize="small" />
                             </Box>
                           )}
-                          {property.name}
+                          <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                            {property.name}
+                            {property.info_vip && (
+                              <Chip 
+                                size="small" 
+                                label="VIP" 
+                                color="secondary" 
+                                sx={{ 
+                                  height: 20, 
+                                  fontSize: '0.7rem', 
+                                  mt: 0.5, 
+                                  width: 'fit-content',
+                                  bgcolor: '#9c27b0' 
+                                }} 
+                              />
+                            )}
+                          </Box>
                         </Box>
                       </TableCell>
                       <TableCell>{property.address}</TableCell>
@@ -629,12 +654,23 @@ const Properties: React.FC = () => {
                         </Box>
                       </TableCell>
                       <TableCell>
-                        <Chip
-                          label={property.is_available ? 'متاح' : 'غير متاح'}
-                          color={property.is_available ? 'success' : 'error'}
-                          size="small"
-                          sx={{ fontWeight: 'bold' }}
-                        />
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Chip
+                            label={property.is_available ? 'متاح' : 'غير متاح'}
+                            color={property.is_available ? 'success' : 'error'}
+                            size="small"
+                            sx={{ fontWeight: 'bold' }}
+                          />
+                          <Tooltip title={property.is_available ? 'جعله غير متاح' : 'جعله متاح'}>
+                            <IconButton
+                              size="small"
+                              color={property.is_available ? 'success' : 'error'}
+                              onClick={() => handleToggleAvailability(property.id, property.is_available)}
+                            >
+                              {property.is_available ? <ToggleOnIcon /> : <ToggleOffIcon />}
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
                       </TableCell>
                       <TableCell>
                         <Tooltip title="عرض التفاصيل">

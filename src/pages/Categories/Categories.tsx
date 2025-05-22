@@ -38,6 +38,7 @@ import {
   ToggleOff as ToggleOffIcon,
   ArrowUpward as ArrowUpwardIcon,
   ArrowDownward as ArrowDownwardIcon,
+  Place as PlaceIcon,
 } from '@mui/icons-material';
 import Layout from '../../components/Layout';
 import { categoriesApi, Category } from '../../services/categoriesApi';
@@ -354,18 +355,28 @@ const Categories: React.FC = () => {
 
         {/* قسم البحث والتصفية */}
         <Paper elevation={3} sx={{ p: 3, mb: 4, borderRadius: 2 }}>
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, mb: 2 }}>
-            <Typography variant="h6" component="h2" sx={{ mb: { xs: 2, sm: 0 } }}>
+          <Box sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            mb: 2
+          }}>
+            <Typography variant="h6" component="h2">
               تصفية الأقسام
             </Typography>
-
-            <Box sx={{ display: 'flex', gap: 1 }}>
+            <Box sx={{ display: 'flex', gap: 2 }}>
               <Button
                 variant="outlined"
-                color="primary"
+                startIcon={<PlaceIcon />}
+                onClick={() => navigate('/places')}
+              >
+                الأماكن
+              </Button>
+              <Button
+                variant="contained"
                 startIcon={<AddIcon />}
                 onClick={openAddForm}
-                sx={{ borderRadius: 2 }}
+                sx={{ px: 3 }}
               >
                 إضافة قسم جديد
               </Button>
@@ -489,7 +500,7 @@ const Categories: React.FC = () => {
                         />
                       </TableCell>
                       <TableCell>
-                        {new Date(category.created_at).toLocaleDateString('ar-EG')}
+                        {category.created_at ? new Date(category.created_at).toLocaleDateString('ar-EG') : '-'}
                       </TableCell>
                       <TableCell>
                         <Box sx={{ display: 'flex', gap: 1 }}>

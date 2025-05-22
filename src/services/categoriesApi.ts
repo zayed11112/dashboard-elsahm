@@ -1,4 +1,4 @@
-import { supabase } from '../supabase/client';
+import { supabase } from '../supabase/config';
 
 // تعريف نوع البيانات للقسم
 export interface Category {
@@ -7,8 +7,16 @@ export interface Category {
   icon_url: string;
   order_index: number;
   is_active: boolean;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// تعريف نوع البيانات للعلاقة بين العقار والقسم
+export interface PropertyCategory {
+  id?: string;
+  property_id: string;
+  category_id: number;
+  created_at?: string;
 }
 
 // خدمة API للأقسام
@@ -146,5 +154,82 @@ export const categoriesApi = {
     }
 
     return { data: data?.[0] };
+  },
+
+  // جلب الأقسام المرتبطة بعقار معين
+  async getCategoriesForProperty(propertyId: string) {
+    try {
+      // الحصول على روابط الأقسام للعقار المحدد
+      const { data: categoryLinks, error: linksError } = await supabase
+        .from('property_categories')
+        .select('category_id')
+        .eq('property_id', propertyId);
+
+      if (linksError) {
+        console.error('Error fetching property category links:', linksError);
+        throw linksError;
+      }
+
+      if (!categoryLinks || categoryLinks.length === 0) {
+        return { data: [] };
+      }
+
+      // استخراج معرفات الأقسام
+      const categoryIds = categoryLinks.map(link => link.category_id);
+
+      // الحصول على تفاصيل الأقسام
+      const { data: categories, error: categoriesError } = await supabase
+        .from('categories')
+        .select('*')
+        .in('id', categoryIds);
+
+      if (categoriesError) {
+        console.error('Error fetching categories by ids:', categoriesError);
+        throw categoriesError;
+      }
+
+      return { data: categories || [] };
+    } catch (error) {
+      console.error('Error in getCategoriesForProperty:', error);
+      throw error;
+    }
+  },
+
+  // ربط عقار بعدة أقسام
+  async linkPropertyToCategories(propertyId: string, categoryIds: number[]) {
+    try {
+      // حذف الروابط القديمة أولاً
+      const { error: deleteError } = await supabase
+        .from('property_categories')
+        .delete()
+        .eq('property_id', propertyId);
+
+      if (deleteError) {
+        console.error('Error deleting old property category links:', deleteError);
+        throw deleteError;
+      }
+
+      // إضافة الروابط الجديدة
+      if (categoryIds.length > 0) {
+        const links = categoryIds.map(categoryId => ({
+          property_id: propertyId,
+          category_id: categoryId,
+        }));
+
+        const { error: insertError } = await supabase
+          .from('property_categories')
+          .insert(links);
+
+        if (insertError) {
+          console.error('Error linking property to categories:', insertError);
+          throw insertError;
+        }
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error in linkPropertyToCategories:', error);
+      throw error;
+    }
   }
 };
