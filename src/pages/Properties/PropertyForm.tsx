@@ -339,18 +339,30 @@ const PropertyForm: React.FC = () => {
 
     try {
       const uploadedImages: string[] = [];
+      let failedUploads = 0;
+      let usedFallback = false;
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-
+        
         // Update progress
         setUploadProgress(Math.round((i / files.length) * 100));
 
-        // Upload to ImgBB
-        const result = await imgbbApi.uploadImage(file);
-
-        // Add the URL to our list
-        uploadedImages.push(result.url);
+        try {
+          // Try to upload with ImgBB and fallback to Freeimage.host if necessary
+          const result = await imgbbApi.uploadImage(file);
+          
+          // If we're here, upload succeeded with either primary or fallback service
+          if (result.url.includes('freeimage.host')) {
+            usedFallback = true;
+          }
+          
+          // Add the URL to our list
+          uploadedImages.push(result.url);
+        } catch (uploadError) {
+          console.error('Failed to upload image:', uploadError);
+          failedUploads++;
+        }
       }
 
       // Update property with new images
@@ -359,7 +371,13 @@ const PropertyForm: React.FC = () => {
         images: [...property.images, ...uploadedImages],
       });
 
-      setSuccess('تم رفع الصور بنجاح');
+      if (failedUploads > 0) {
+        setError(`تم رفع ${uploadedImages.length} من الصور، وفشل رفع ${failedUploads} صورة. يرجى المحاولة مرة أخرى للصور التي فشلت.`);
+      } else if (usedFallback) {
+        setSuccess('تم رفع الصور بنجاح (باستخدام خدمة الرفع البديلة لبعض الصور)');
+      } else {
+        setSuccess('تم رفع الصور بنجاح');
+      }
     } catch (error) {
       console.error('Error uploading images:', error);
       setError('حدث خطأ أثناء رفع الصور. يرجى المحاولة مرة أخرى.');

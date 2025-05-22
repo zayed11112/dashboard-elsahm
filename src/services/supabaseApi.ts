@@ -234,30 +234,58 @@ export const supabasePropertiesApi = {
 // Servicio para cargar imágenes a ImgBB
 export const imgbbApi = {
   async uploadImage(file: File) {
-    const apiKey = 'd4c80caf18ac57a20be196713f4245c2';
-    const formData = new FormData();
-    formData.append('image', file);
+    const imgbbApiKey = 'd4c80caf18ac57a20be196713f4245c2';
+    const freeimageApiKey = '6d207e02198a847aa98d0a2a901485a5';
 
     try {
-      const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+      // First try with ImgBB
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbApiKey}`, {
         method: 'POST',
         body: formData
       });
 
       const data = await response.json();
 
-      if (!data.success) {
-        throw new Error(data.error?.message || 'Failed to upload image');
+      if (data.success) {
+        console.log('Successfully uploaded to ImgBB');
+        return {
+          url: data.data.url,
+          display_url: data.data.display_url,
+          delete_url: data.data.delete_url,
+          thumbnail: data.data.thumb?.url
+        };
       }
 
-      return {
-        url: data.data.url,
-        display_url: data.data.display_url,
-        delete_url: data.data.delete_url,
-        thumbnail: data.data.thumb?.url
-      };
+      // If ImgBB fails, try Freeimage.host
+      console.log('ImgBB upload failed, trying Freeimage.host...');
+      
+      const freeImageFormData = new FormData();
+      freeImageFormData.append('image', file);
+      freeImageFormData.append('key', freeimageApiKey);
+
+      const freeImageResponse = await fetch('https://freeimage.host/api/1/upload', {
+        method: 'POST',
+        body: freeImageFormData
+      });
+
+      const freeImageData = await freeImageResponse.json();
+
+      if (freeImageData.success) {
+        console.log('Successfully uploaded to Freeimage.host');
+        return {
+          url: freeImageData.image.url,
+          display_url: freeImageData.image.url,
+          delete_url: freeImageData.image.delete_url || '',
+          thumbnail: freeImageData.thumb?.url || freeImageData.image.thumb?.url || freeImageData.image.url
+        };
+      }
+
+      throw new Error('Both image upload services failed');
     } catch (error) {
-      console.error('Error uploading image to ImgBB:', error);
+      console.error('Error uploading image:', error);
       throw error;
     }
   }

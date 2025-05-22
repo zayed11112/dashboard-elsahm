@@ -164,6 +164,10 @@ const NavBar: React.FC<NavBarProps> = ({ title }) => {
       path: '/add-balance',
     },
     {
+      text: 'البانرات',
+      path: '/banners',
+    },
+    {
       text: 'تسجيل دخول Supabase',
       path: '/supabase-login',
     },

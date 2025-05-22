@@ -21,6 +21,7 @@ import CheckoutRequests from './pages/CheckoutRequests/CheckoutRequests';
 import AddBalance from './pages/AddBalance/AddBalance';
 import PaymentMethods from './pages/PaymentMethods/PaymentMethods';
 import PaymentRequests from './pages/PaymentRequests/PaymentRequests';
+import Banners from './pages/Banners';
 
 function App() {
   // Inicializar colecciones al cargar la aplicación
@@ -73,6 +74,9 @@ function App() {
 
                 {/* Payment Requests route */}
                 <Route path="/payment-requests" element={<PaymentRequests />} />
+                
+                {/* Banners route */}
+                <Route path="/banners" element={<Banners />} />
               </Route>
 
               {/* Fallback route */}
