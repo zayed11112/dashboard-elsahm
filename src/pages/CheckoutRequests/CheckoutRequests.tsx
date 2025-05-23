@@ -142,6 +142,7 @@ interface CheckoutRequest {
   deposit: number;
   propertyPrice: number;
   userId?: string;
+  notes?: string;
   createdAt: string;
   updatedAt?: string;
 }
@@ -181,6 +182,7 @@ const CheckoutRequests: React.FC = () => {
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [requestToUpdateStatus, setRequestToUpdateStatus] = useState<string | null>(null);
   const [newStatus, setNewStatus] = useState('');
+  const [notes, setNotes] = useState('');
 
   // حالة حوار إرسال الإشعار
   const [notificationDialogOpen, setNotificationDialogOpen] = useState(false);
@@ -331,8 +333,10 @@ const CheckoutRequests: React.FC = () => {
 
   // فتح حوار تغيير الحالة
   const openStatusDialog = (id: string, currentStatus: string) => {
+    const request = checkoutRequests.find(r => r.id === id);
     setRequestToUpdateStatus(id);
     setNewStatus(currentStatus);
+    setNotes(request?.notes || '');
     setStatusDialogOpen(true);
   };
 
@@ -340,6 +344,7 @@ const CheckoutRequests: React.FC = () => {
   const closeStatusDialog = () => {
     setRequestToUpdateStatus(null);
     setStatusDialogOpen(false);
+    setNotes('');
   };
 
   // تحديث حالة طلب الحجز
@@ -348,12 +353,13 @@ const CheckoutRequests: React.FC = () => {
 
     try {
       setLoading(true);
-      await checkoutRequestsApi.updateStatus(requestToUpdateStatus, newStatus);
+      // تحديث الحالة والملاحظات
+      await checkoutRequestsApi.updateStatus(requestToUpdateStatus, newStatus, notes);
 
       // تحديث القائمة
       const updatedRequest = checkoutRequests.find(r => r.id === requestToUpdateStatus);
       setCheckoutRequests(prev => prev.map(r =>
-        r.id === requestToUpdateStatus ? { ...r, status: newStatus } : r
+        r.id === requestToUpdateStatus ? { ...r, status: newStatus, notes: notes } : r
       ));
 
       // إضافة إشعار
@@ -792,6 +798,7 @@ const CheckoutRequests: React.FC = () => {
                     <TableCell sx={{ fontWeight: 'bold' }}>رقم الهاتف</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>العربون</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>العمولة</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>الملاحظات</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>الحالة</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>الإجراءات</TableCell>
                   </TableRow>
@@ -814,6 +821,13 @@ const CheckoutRequests: React.FC = () => {
                       <TableCell>{request.customerPhone}</TableCell>
                       <TableCell>{formatPrice(request.deposit || 0)}</TableCell>
                       <TableCell>{formatPrice(request.commission)}</TableCell>
+                      <TableCell>
+                        {request.notes ? 
+                          <Tooltip title={request.notes}>
+                            <span>{request.notes.length > 20 ? `${request.notes.substring(0, 20)}...` : request.notes}</span>
+                          </Tooltip> 
+                        : '—'}
+                      </TableCell>
                       <TableCell>
                         <Chip
                           label={request.status}
@@ -915,14 +929,12 @@ const CheckoutRequests: React.FC = () => {
         open={statusDialogOpen}
         onClose={closeStatusDialog}
       >
-        <DialogTitle>تغيير حالة الطلب</DialogTitle>
+        <DialogTitle>تغيير حالة طلب الحجز</DialogTitle>
         <DialogContent>
-          <DialogContentText sx={{ mb: 2 }}>
-            يرجى اختيار الحالة الجديدة للطلب:
-          </DialogContentText>
-          <FormControl fullWidth>
-            <InputLabel>الحالة</InputLabel>
+          <FormControl fullWidth margin="normal">
+            <InputLabel id="status-select-label">الحالة</InputLabel>
             <Select
+              labelId="status-select-label"
               value={newStatus}
               onChange={(e) => setNewStatus(e.target.value)}
               label="الحالة"
@@ -934,13 +946,22 @@ const CheckoutRequests: React.FC = () => {
               ))}
             </Select>
           </FormControl>
+          <TextField
+            margin="normal"
+            fullWidth
+            label="ملاحظات"
+            multiline
+            rows={4}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
         </DialogContent>
         <DialogActions>
           <Button onClick={closeStatusDialog} color="primary">
             إلغاء
           </Button>
-          <Button onClick={handleUpdateStatus} color="primary" variant="contained">
-            تحديث
+          <Button onClick={handleUpdateStatus} color="primary" disabled={loading}>
+            {loading ? <CircularProgress size={24} /> : 'حفظ'}
           </Button>
         </DialogActions>
       </Dialog>

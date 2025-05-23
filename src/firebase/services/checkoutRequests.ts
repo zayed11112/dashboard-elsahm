@@ -15,6 +15,7 @@ export interface CheckoutRequest {
   deposit?: number;
   property_price?: number;
   user_id?: string;
+  notes?: string;
   created_at: Timestamp | Date;
   updated_at?: Timestamp | Date;
 }
@@ -109,13 +110,31 @@ export const checkoutRequestService = {
   },
 
   // تحديث حالة طلب الحجز
-  updateStatus: async (id: string, status: string): Promise<void> => {
+  updateStatus: async (id: string, status: string, notes?: string): Promise<void> => {
     try {
       const docRef = doc(db, 'checkout_requests_backup', id);
-      await updateDoc(docRef, { 
-        status, 
+      
+      // تحويل الحالة العربية إلى الإنجليزية للتخزين
+      let dbStatus = status;
+      if (status === 'جاري المعالجة') {
+        dbStatus = 'pending';
+      } else if (status === 'مؤكد') {
+        dbStatus = 'confirmed';
+      } else if (status === 'ملغي') {
+        dbStatus = 'cancelled';
+      }
+      
+      const updateData: any = { 
+        status: dbStatus, 
         updated_at: new Date() 
-      });
+      };
+      
+      // إضافة الملاحظات إذا تم توفيرها
+      if (notes !== undefined) {
+        updateData.notes = notes;
+      }
+      
+      await updateDoc(docRef, updateData);
     } catch (error) {
       console.error(`Error updating status for checkout request with ID ${id}:`, error);
       throw error;

@@ -290,26 +290,39 @@ export const checkoutRequestsApi = {
       const checkoutRequests = await checkoutRequestService.getAll();
 
       // Adaptar los datos para el dashboard
-      const adaptedRequests = checkoutRequests.map(request => ({
-        id: request.id || '',
-        propertyId: request.property_id || '',
-        propertyName: request.property_name || '',
-        customerName: request.customer_name || '',
-        customerPhone: request.customer_phone || '',
-        universityId: request.university_id || '',
-        college: request.college || '',
-        status: request.status || 'جاري المعالجة',
-        commission: request.commission || 0,
-        deposit: request.deposit || 0,
-        propertyPrice: request.property_price || 0,
-        userId: request.user_id || '',
-        createdAt: request.created_at instanceof Date
-          ? request.created_at.toLocaleDateString('ar-SA')
-          : new Date().toLocaleDateString('ar-SA'),
-        updatedAt: request.updated_at instanceof Date
-          ? request.updated_at.toLocaleDateString('ar-SA')
-          : new Date().toLocaleDateString('ar-SA'),
-      }));
+      const adaptedRequests = checkoutRequests.map(request => {
+        // Map database status values to Arabic UI values
+        let uiStatus = request.status || 'جاري المعالجة';
+        if (request.status === 'pending') {
+          uiStatus = 'جاري المعالجة';
+        } else if (request.status === 'confirmed') {
+          uiStatus = 'مؤكد';
+        } else if (request.status === 'cancelled') {
+          uiStatus = 'ملغي';
+        }
+        
+        return {
+          id: request.id || '',
+          propertyId: request.property_id || '',
+          propertyName: request.property_name || '',
+          customerName: request.customer_name || '',
+          customerPhone: request.customer_phone || '',
+          universityId: request.university_id || '',
+          college: request.college || '',
+          status: uiStatus,
+          commission: request.commission || 0,
+          deposit: request.deposit || 0,
+          propertyPrice: request.property_price || 0,
+          userId: request.user_id || '',
+          notes: request.notes || '',
+          createdAt: request.created_at instanceof Date
+            ? request.created_at.toLocaleDateString('ar-SA')
+            : new Date().toLocaleDateString('ar-SA'),
+          updatedAt: request.updated_at instanceof Date
+            ? request.updated_at.toLocaleDateString('ar-SA')
+            : new Date().toLocaleDateString('ar-SA'),
+        };
+      });
 
       // Aplicar filtros si existen
       let filteredRequests = [...adaptedRequests];
@@ -344,6 +357,16 @@ export const checkoutRequestsApi = {
         return { data: null };
       }
 
+      // Map database status values to Arabic UI values
+      let uiStatus = request.status || 'جاري المعالجة';
+      if (request.status === 'pending') {
+        uiStatus = 'جاري المعالجة';
+      } else if (request.status === 'confirmed') {
+        uiStatus = 'مؤكد';
+      } else if (request.status === 'cancelled') {
+        uiStatus = 'ملغي';
+      }
+
       // Adaptar para el dashboard
       const adaptedRequest = {
         id: request.id || '',
@@ -353,11 +376,12 @@ export const checkoutRequestsApi = {
         customerPhone: request.customer_phone || '',
         universityId: request.university_id || '',
         college: request.college || '',
-        status: request.status || 'جاري المعالجة',
+        status: uiStatus,
         commission: request.commission || 0,
         deposit: request.deposit || 0,
         propertyPrice: request.property_price || 0,
         userId: request.user_id || '',
+        notes: request.notes || '',
         createdAt: request.created_at instanceof Date
           ? request.created_at.toLocaleDateString('ar-SA')
           : new Date().toLocaleDateString('ar-SA'),
@@ -373,9 +397,9 @@ export const checkoutRequestsApi = {
     }
   },
 
-  updateStatus: async (id: string, status: string) => {
+  updateStatus: async (id: string, status: string, notes?: string) => {
     try {
-      await checkoutRequestService.updateStatus(id, status);
+      await checkoutRequestService.updateStatus(id, status, notes);
       return { data: { success: true } };
     } catch (error) {
       console.error(`Error al actualizar estado de solicitud ${id}:`, error);
@@ -398,15 +422,27 @@ export const checkoutRequestsApi = {
       const requests = await checkoutRequestService.getRecent(limit);
 
       // Adaptar para el dashboard
-      const adaptedRequests = requests.map(request => ({
-        id: request.id || '',
-        propertyName: request.property_name || '',
-        customerName: request.customer_name || '',
-        status: request.status || 'جاري المعالجة',
-        createdAt: request.created_at instanceof Date
-          ? request.created_at.toLocaleDateString('ar-SA')
-          : new Date().toLocaleDateString('ar-SA'),
-      }));
+      const adaptedRequests = requests.map(request => {
+        // Map database status values to Arabic UI values
+        let uiStatus = request.status || 'جاري المعالجة';
+        if (request.status === 'pending') {
+          uiStatus = 'جاري المعالجة';
+        } else if (request.status === 'confirmed') {
+          uiStatus = 'مؤكد';
+        } else if (request.status === 'cancelled') {
+          uiStatus = 'ملغي';
+        }
+        
+        return {
+          id: request.id || '',
+          propertyName: request.property_name || '',
+          customerName: request.customer_name || '',
+          status: uiStatus,
+          createdAt: request.created_at instanceof Date
+            ? request.created_at.toLocaleDateString('ar-SA')
+            : new Date().toLocaleDateString('ar-SA'),
+        };
+      });
 
       return { data: adaptedRequests };
     } catch (error) {
