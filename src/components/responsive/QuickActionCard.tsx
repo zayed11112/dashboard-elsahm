@@ -8,6 +8,7 @@ import {
   CardContent,
   IconButton,
   keyframes,
+  Badge,
 } from '@mui/material';
 import { palette } from '../../theme/palette';
 
@@ -148,6 +149,7 @@ interface QuickActionCardProps {
   gradient?: string;
   color?: string;
   sx?: object;
+  badge?: number;
 }
 
 /**
@@ -161,6 +163,7 @@ const QuickActionCard = ({
   gradient,
   color = palette.primary.main,
   sx = {},
+  badge,
 }: QuickActionCardProps) => {
   return (
     <QuickActionCardStyled
@@ -177,9 +180,30 @@ const QuickActionCard = ({
         sx={{ background: color }}
       />
       <QuickActionCardContent>
-        <AddButton aria-label="إضافة" sx={{ backgroundColor: color }}>
-          {icon}
-        </AddButton>
+        {badge && badge > 0 ? (
+          <Badge
+            badgeContent={badge}
+            color="error"
+            sx={{
+              '& .MuiBadge-badge': {
+                fontSize: '0.75rem',
+                height: 22,
+                minWidth: 22,
+                fontWeight: 'bold',
+                right: -5,
+                top: 5
+              }
+            }}
+          >
+            <AddButton aria-label="إضافة" sx={{ backgroundColor: color }}>
+              {icon}
+            </AddButton>
+          </Badge>
+        ) : (
+          <AddButton aria-label="إضافة" sx={{ backgroundColor: color }}>
+            {icon}
+          </AddButton>
+        )}
         <Typography
           variant="h6"
           fontWeight={600}

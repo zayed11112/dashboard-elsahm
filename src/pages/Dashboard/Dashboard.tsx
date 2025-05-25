@@ -33,6 +33,9 @@ import {
   BarChart as BarChartIcon,
   AttachMoney as AttachMoneyIcon,
   MoneyOff as MoneyOffIcon,
+  ChatBubbleOutline,
+  FiberNew,
+  HourglassEmpty,
 } from '@mui/icons-material';
 import {
   PropertySearchIcon,
@@ -44,6 +47,7 @@ import Layout from '../../components/Layout';
 import { dashboardApi, checkoutRequestsApi } from '../../services/api';
 import { supabasePropertiesApi } from '../../services/supabaseApi';
 import { categoriesApi } from '../../services/categoriesApi';
+import { fetchAllComplaints } from '../../services/complaintsApi';
 import {
   ResponsiveContainer,
   ResponsiveGrid,
@@ -70,6 +74,11 @@ interface DashboardStats {
   pendingPaymentRequestsCount?: number;
   completedPaymentRequestsCount?: number;
   totalPaymentAmount?: number;
+  // Stats for complaints
+  complaintsCount?: number;
+  openComplaintsCount?: number;
+  inProgressComplaintsCount?: number;
+  closedComplaintsCount?: number;
 }
 
 // Create a cache object for dashboard data
@@ -114,11 +123,13 @@ const Dashboard: React.FC = () => {
         propertiesWithCommissionRes,
         categoriesRes,
         checkoutRequestsResponse,
+        complaintsData,
       ] = await Promise.all([
         dashboardApi.getStats(),
         supabasePropertiesApi.getAll(), 
         categoriesApi.getAll(),
-        checkoutRequestsApi.getAll()
+        checkoutRequestsApi.getAll(),
+        fetchAllComplaints(),
       ]);
 
       // حساب إجمالي العمولات
@@ -137,6 +148,19 @@ const Dashboard: React.FC = () => {
       const checkoutCommissionTotal = checkoutRequests
         .filter(r => r.status === 'مؤكد')
         .reduce((sum, r) => sum + (r.commission || 0), 0);
+
+      // معالجة بيانات الشكاوى
+      const complaintsCount = complaintsData.length;
+      const openComplaintsCount = complaintsData.filter(c => c.status === 'open').length;
+      const inProgressComplaintsCount = complaintsData.filter(c => c.status === 'in-progress').length;
+      const closedComplaintsCount = complaintsData.filter(c => c.status === 'closed').length;
+      
+      console.log('Complaints data:', {
+        complaintsCount,
+        openComplaintsCount,
+        inProgressComplaintsCount,
+        closedComplaintsCount
+      });
 
       // Mock data for payment requests
       const paymentRequestsCount = 15;
@@ -158,7 +182,12 @@ const Dashboard: React.FC = () => {
         paymentRequestsCount,
         pendingPaymentRequestsCount,
         completedPaymentRequestsCount,
-        totalPaymentAmount
+        totalPaymentAmount,
+        // Add complaints stats
+        complaintsCount,
+        openComplaintsCount,
+        inProgressComplaintsCount,
+        closedComplaintsCount
       };
 
       // تخزين البيانات في الذاكرة المؤقتة
@@ -466,6 +495,173 @@ const Dashboard: React.FC = () => {
                   </Typography>
                 </CardContent>
               </Card>
+            </Grid>
+            
+            {/* إضافة بطاقة الشكاوى */}
+            <Grid item xs={12} sm={6} md={3}>
+              <Card 
+                onClick={() => navigate('/complaints')}
+                elevation={2} 
+                sx={{ 
+                  borderRadius: 3, 
+                  boxShadow: '0 5px 20px rgba(244,67,54,0.15)',
+                  background: 'linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%)',
+                  height: '100%',
+                  cursor: 'pointer',
+                  position: 'relative',
+                  '&:hover': {
+                    boxShadow: '0 8px 25px rgba(244,67,54,0.25)',
+                  }
+                }}
+              >
+                <CardContent sx={{ p: 3 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Typography 
+                      variant="h5" 
+                      sx={{ fontWeight: 700, color: '#D32F2F' }}
+                    >
+                      {stats?.complaintsCount || 0}
+                    </Typography>
+                    <Box sx={{ position: 'relative' }}>
+                      <IconButton 
+                        sx={{ 
+                          bgcolor: '#D32F2F', 
+                          width: 40, 
+                          height: 40,
+                          color: 'white',
+                        }}
+                      >
+                        <ChatBubbleOutline />
+                      </IconButton>
+                      {(stats?.openComplaintsCount || 0) > 0 && (
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            top: -5,
+                            right: -5,
+                            width: 22,
+                            height: 22,
+                            borderRadius: '50%',
+                            bgcolor: '#D32F2F',
+                            color: 'white',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.75rem',
+                            fontWeight: 'bold',
+                            border: '2px solid white',
+                          }}
+                        >
+                          {stats?.openComplaintsCount}
+                        </Box>
+                      )}
+                    </Box>
+                  </Box>
+                  <Typography variant="body1" sx={{ mt: 2, fontWeight: 600 }}>الشكاوى</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {(stats?.openComplaintsCount || 0) > 0 ? `${stats?.openComplaintsCount} شكوى مفتوحة` : 'لا توجد شكاوى مفتوحة'}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        </Box>
+
+        {/* قسم إدارة الشكاوى - مبسط */}
+        <Box sx={{ mb: 5, border: '2px solid #0288D1', borderRadius: 2, p: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h5" fontWeight="bold" color="#0288D1">
+              إدارة الشكاوى
+            </Typography>
+            {stats?.openComplaintsCount ? (
+              <Chip 
+                label={`${stats.openComplaintsCount} شكوى جديدة`} 
+                color="error"
+                sx={{ fontWeight: 'bold' }}
+              />
+            ) : null}
+          </Box>
+          
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={4}>
+              <Paper 
+                elevation={3}
+                onClick={() => navigate('/complaints')}
+                sx={{ 
+                  p: 3, 
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  '&:hover': { bgcolor: '#f5f5f5' }
+                }}
+              >
+                <ChatBubbleOutline sx={{ fontSize: 40, color: '#0288D1', mb: 1 }} />
+                <Typography variant="h6">جميع الشكاوى</Typography>
+                <Typography variant="h4" color="#0288D1" fontWeight="bold">
+                  {stats?.complaintsCount || 0}
+                </Typography>
+              </Paper>
+            </Grid>
+            
+            <Grid item xs={12} md={4}>
+              <Paper 
+                elevation={3}
+                onClick={() => navigate('/complaints')}
+                sx={{ 
+                  p: 3, 
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  '&:hover': { bgcolor: '#f5f5f5' },
+                  position: 'relative'
+                }}
+              >
+                <Box sx={{ position: 'relative', display: 'inline-block', mb: 1 }}>
+                  <FiberNew sx={{ fontSize: 40, color: '#f44336' }} />
+                  {(stats?.openComplaintsCount || 0) > 0 && (
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        top: -10,
+                        right: -10,
+                        bgcolor: '#f44336',
+                        color: 'white',
+                        width: 24,
+                        height: 24,
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 'bold',
+                        fontSize: '0.8rem'
+                      }}
+                    >
+                      {stats?.openComplaintsCount}
+                    </Box>
+                  )}
+                </Box>
+                <Typography variant="h6">شكاوى مفتوحة</Typography>
+                <Typography variant="h4" color="#f44336" fontWeight="bold">
+                  {stats?.openComplaintsCount || 0}
+                </Typography>
+              </Paper>
+            </Grid>
+            
+            <Grid item xs={12} md={4}>
+              <Paper 
+                elevation={3}
+                onClick={() => navigate('/complaints')}
+                sx={{ 
+                  p: 3, 
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  '&:hover': { bgcolor: '#f5f5f5' }
+                }}
+              >
+                <HourglassEmpty sx={{ fontSize: 40, color: '#ff9800', mb: 1 }} />
+                <Typography variant="h6">قيد المعالجة</Typography>
+                <Typography variant="h4" color="#ff9800" fontWeight="bold">
+                  {stats?.inProgressComplaintsCount || 0}
+                </Typography>
+              </Paper>
             </Grid>
           </Grid>
         </Box>

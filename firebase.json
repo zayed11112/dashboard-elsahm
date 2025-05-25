@@ -15,5 +15,27 @@
   },
   "functions": {
     "source": "functions"
+  },
+  "firestore": {
+    "indexes": [
+      {
+        "collectionGroup": "complaints",
+        "queryScope": "COLLECTION",
+        "fields": [
+          { "fieldPath": "userId", "order": "ASCENDING" },
+          { "fieldPath": "status", "order": "ASCENDING" },
+          { "fieldPath": "createdAt", "order": "DESCENDING" },
+          { "fieldPath": "__name__", "order": "DESCENDING" }
+        ]
+      },
+      {
+        "collectionGroup": "complaints",
+        "queryScope": "COLLECTION",
+        "fields": [
+          { "fieldPath": "status", "order": "ASCENDING" },
+          { "fieldPath": "createdAt", "order": "DESCENDING" }
+        ]
+      }
+    ]
   }
 }

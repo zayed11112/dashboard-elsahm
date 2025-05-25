@@ -23,6 +23,8 @@ import AddBalance from './pages/AddBalance/AddBalance';
 import PaymentMethods from './pages/PaymentMethods/PaymentMethods';
 import PaymentRequests from './pages/PaymentRequests/PaymentRequests';
 import Banners from './pages/Banners';
+import ComplaintsPage from './pages/Complaints';
+import ComplaintDetailPage from './pages/Complaints/ComplaintDetail';
 
 function App() {
   // Inicializar colecciones al cargar la aplicación
@@ -81,6 +83,10 @@ function App() {
                 
                 {/* Banners route */}
                 <Route path="/banners" element={<Banners />} />
+                
+                {/* Complaints routes */}
+                <Route path="/complaints" element={<ComplaintsPage />} />
+                <Route path="/complaints/:id" element={<ComplaintDetailPage />} />
               </Route>
 
               {/* Fallback route */}

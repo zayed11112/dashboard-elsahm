@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -72,13 +72,8 @@ const Owners: React.FC = () => {
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Fetch owners on mount
-  useEffect(() => {
-    fetchOwners();
-  }, []);
-
   // Fetch owners
-  const fetchOwners = async () => {
+  const fetchOwners = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -95,7 +90,12 @@ const Owners: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchQuery]);
+
+  // Fetch owners on mount
+  useEffect(() => {
+    fetchOwners();
+  }, [fetchOwners]);
 
   // Handle pagination
   const handleChangePage = (event: unknown, newPage: number) => {
