@@ -1,21 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Container, 
-  Box, 
-  Typography, 
-  Tabs, 
-  Tab, 
-  Paper, 
-  Grid, 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  Chip, 
-  Button, 
-  Divider, 
-  Avatar, 
-  IconButton, 
-  CircularProgress, 
+import {
+  Container,
+  Box,
+  Typography,
+  Tabs,
+  Tab,
+  Paper,
+  Grid,
+  Card,
+  CardContent,
+  CardHeader,
+  Chip,
+  Button,
+  Divider,
+  Avatar,
+  IconButton,
+  CircularProgress,
   Badge,
   InputAdornment,
   TextField,
@@ -35,11 +35,11 @@ import {
   DialogActions
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { 
-  VisibilityOutlined, 
-  CheckCircleOutline, 
-  HourglassEmpty, 
-  FiberNew, 
+import {
+  VisibilityOutlined,
+  CheckCircleOutline,
+  HourglassEmpty,
+  FiberNew,
   Refresh,
   Search,
   SortByAlpha,
@@ -136,7 +136,7 @@ const ComplaintsPage: React.FC = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [complaintToDelete, setComplaintToDelete] = useState<string | null>(null);
   const [deletingComplaint, setDeletingComplaint] = useState(false);
-  
+
   const navigate = useNavigate();
 
   // Fetch all complaints on component mount
@@ -150,7 +150,7 @@ const ComplaintsPage: React.FC = () => {
       setLoading(true);
       setError(null);
       const allComplaints = await fetchAllComplaints();
-      
+
       setComplaints(allComplaints);
       setOpenComplaints(allComplaints.filter(c => c.status === 'open'));
       setInProgressComplaints(allComplaints.filter(c => c.status === 'in-progress'));
@@ -178,7 +178,7 @@ const ComplaintsPage: React.FC = () => {
     try {
       setLoading(true);
       const filteredComplaints = await fetchComplaintsByStatus(status);
-      
+
       if (status === 'open') {
         setOpenComplaints(filteredComplaints);
       } else if (status === 'in-progress') {
@@ -208,7 +208,7 @@ const ComplaintsPage: React.FC = () => {
   // Get currently displayed complaints based on tab
   const getCurrentComplaints = () => {
     let currentComplaints: Complaint[];
-    
+
     if (tabValue === 0) {
       currentComplaints = openComplaints;
     } else if (tabValue === 1) {
@@ -216,7 +216,7 @@ const ComplaintsPage: React.FC = () => {
     } else {
       currentComplaints = closedComplaints;
     }
-    
+
     return currentComplaints;
   };
 
@@ -249,20 +249,20 @@ const ComplaintsPage: React.FC = () => {
   // Handle deleting a complaint
   const handleDeleteComplaint = async () => {
     if (!complaintToDelete) return;
-    
+
     try {
       setDeletingComplaint(true);
       await deleteComplaint(complaintToDelete);
-      
+
       // Update UI by removing the deleted complaint
       const updatedComplaints = complaints.filter(c => c.id !== complaintToDelete);
       setComplaints(updatedComplaints);
-      
+
       // Update the appropriate status-specific list
       setOpenComplaints(prev => prev.filter(c => c.id !== complaintToDelete));
       setInProgressComplaints(prev => prev.filter(c => c.id !== complaintToDelete));
       setClosedComplaints(prev => prev.filter(c => c.id !== complaintToDelete));
-      
+
       closeDeleteDialog();
     } catch (error) {
       console.error('Failed to delete complaint', error);
@@ -274,10 +274,10 @@ const ComplaintsPage: React.FC = () => {
 
   // Render each complaint card
   const renderComplaintCard = (complaint: Complaint) => (
-    <Card 
-      key={complaint.id} 
-      sx={{ 
-        mb: 2, 
+    <Card
+      key={complaint.id}
+      sx={{
+        mb: 2,
         borderRadius: 2,
         transition: 'all 0.3s ease-in-out',
         '&:hover': {
@@ -294,10 +294,10 @@ const ComplaintsPage: React.FC = () => {
         width: '100%',
         bgcolor: getStatusColor(complaint.status)
       }} />
-      
+
       <CardHeader
         avatar={
-          <Avatar sx={{ 
+          <Avatar sx={{
             width: 45,
             height: 45,
             bgcolor: alpha(getStatusColor(complaint.status), 0.8),
@@ -312,19 +312,19 @@ const ComplaintsPage: React.FC = () => {
         }
         title={
           <Box display="flex" alignItems="center" justifyContent="space-between">
-            <Typography variant="h6" component="div" sx={{ 
-              fontWeight: 600, 
+            <Typography variant="h6" component="div" sx={{
+              fontWeight: 600,
               fontSize: '1.05rem',
               color: '#334155'
             }}>
               {complaint.title}
             </Typography>
-            <Chip 
+            <Chip
               icon={statusIcons[complaint.status]}
-              label={statusText[complaint.status]} 
+              label={statusText[complaint.status]}
               color={statusColors[complaint.status] as any}
               size="small"
-              sx={{ 
+              sx={{
                 fontWeight: 'bold',
                 borderRadius: '20px',
                 boxShadow: `0 2px 5px ${alpha(getStatusColor(complaint.status), 0.2)}`,
@@ -350,16 +350,16 @@ const ComplaintsPage: React.FC = () => {
           </Box>
         }
       />
-      
+
       <Divider sx={{ mx: 2, opacity: 0.5 }} />
-      
+
       <CardContent sx={{ pt: 2, bgcolor: customColors.lightGrey }}>
-        <Typography 
-          variant="body1" 
-          sx={{ 
-            mb: 2, 
-            maxHeight: '80px', 
-            overflow: 'hidden', 
+        <Typography
+          variant="body1"
+          sx={{
+            mb: 2,
+            maxHeight: '80px',
+            overflow: 'hidden',
             textOverflow: 'ellipsis',
             display: '-webkit-box',
             WebkitLineClamp: 3,
@@ -372,25 +372,25 @@ const ComplaintsPage: React.FC = () => {
           {complaint.description}
         </Typography>
       </CardContent>
-      
-      <CardActions sx={{ 
-        justifyContent: 'space-between', 
-        px: 2, 
+
+      <CardActions sx={{
+        justifyContent: 'space-between',
+        px: 2,
         pb: 2,
         bgcolor: customColors.lightGrey
       }}>
         <Stack direction="row" spacing={1} alignItems="center">
-          <Badge 
-            badgeContent={complaint.responses.length} 
+          <Badge
+            badgeContent={complaint.responses.length}
             color="info"
-            sx={{ 
-              '& .MuiBadge-badge': { 
-                fontWeight: 'bold', 
+            sx={{
+              '& .MuiBadge-badge': {
+                fontWeight: 'bold',
                 fontSize: '0.75rem',
                 minWidth: '20px',
                 height: '20px',
                 bgcolor: complaint.responses.length > 0 ? customColors.primary : customColors.darkGrey
-              } 
+              }
             }}
           >
             <ChatBubbleOutline sx={{ color: customColors.darkGrey }} />
@@ -399,15 +399,15 @@ const ComplaintsPage: React.FC = () => {
             الردود
           </Typography>
         </Stack>
-        
+
         <Box display="flex" gap={1}>
           <Button
             variant="contained"
             startIcon={<VisibilityOutlined />}
             onClick={() => handleViewComplaint(complaint.id)}
             size="small"
-            sx={{ 
-              borderRadius: '20px', 
+            sx={{
+              borderRadius: '20px',
               px: 2,
               py: 0.8,
               fontWeight: 'bold',
@@ -422,12 +422,12 @@ const ComplaintsPage: React.FC = () => {
           >
             عرض التفاصيل
           </Button>
-          
+
           <Tooltip title="حذف الشكوى">
-            <IconButton 
-              size="small" 
+            <IconButton
+              size="small"
               onClick={(e) => openDeleteDialog(complaint.id, e)}
-              sx={{ 
+              sx={{
                 bgcolor: alpha('#f44336', 0.1),
                 color: '#f44336',
                 '&:hover': {
@@ -461,23 +461,23 @@ const ComplaintsPage: React.FC = () => {
           </DialogContentText>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button 
-            onClick={closeDeleteDialog} 
+          <Button
+            onClick={closeDeleteDialog}
             variant="outlined"
-            sx={{ 
+            sx={{
               borderRadius: '12px',
               fontWeight: 'medium'
             }}
           >
             إلغاء
           </Button>
-          <Button 
-            onClick={handleDeleteComplaint} 
-            color="error" 
+          <Button
+            onClick={handleDeleteComplaint}
+            color="error"
             variant="contained"
             disabled={deletingComplaint}
             startIcon={deletingComplaint ? <CircularProgress size={20} color="inherit" /> : <Delete />}
-            sx={{ 
+            sx={{
               borderRadius: '12px',
               fontWeight: 'medium',
               bgcolor: '#f44336',
@@ -560,20 +560,20 @@ const ComplaintsPage: React.FC = () => {
           }}
         >
           {/* Tabs & Filters Bar */}
-          <AppBar 
-            position="static" 
-            color="default" 
+          <AppBar
+            position="static"
+            color="default"
             elevation={0}
-            sx={{ 
+            sx={{
               backgroundColor: 'white',
               borderBottom: `1px solid ${customColors.cardBorder}`
             }}
           >
-            <Toolbar sx={{ 
-              display: 'flex', 
-              flexDirection: { xs: 'column', md: 'row' }, 
-              justifyContent: 'center', 
-              alignItems: 'center', 
+            <Toolbar sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', md: 'row' },
+              justifyContent: 'center',
+              alignItems: 'center',
               py: 1
             }}>
               <Tabs
@@ -584,7 +584,6 @@ const ComplaintsPage: React.FC = () => {
                 indicatorColor="primary"
                 variant="scrollable"
                 scrollButtons="auto"
-                centered
                 sx={{
                   width: '100%',
                   maxWidth: '600px',
@@ -655,11 +654,11 @@ const ComplaintsPage: React.FC = () => {
             ) : error ? (
               <Box textAlign="center" p={5}>
                 <Typography color="error">{error}</Typography>
-                <Button 
-                  onClick={refreshCurrentTab} 
-                  variant="outlined" 
-                  sx={{ 
-                    mt: 2, 
+                <Button
+                  onClick={refreshCurrentTab}
+                  variant="outlined"
+                  sx={{
+                    mt: 2,
                     borderRadius: '12px',
                     borderColor: customColors.primary,
                     color: customColors.primary,
@@ -709,11 +708,11 @@ const ComplaintsPage: React.FC = () => {
             ) : error ? (
               <Box textAlign="center" p={5}>
                 <Typography color="error">{error}</Typography>
-                <Button 
-                  onClick={refreshCurrentTab} 
-                  variant="outlined" 
-                  sx={{ 
-                    mt: 2, 
+                <Button
+                  onClick={refreshCurrentTab}
+                  variant="outlined"
+                  sx={{
+                    mt: 2,
                     borderRadius: '12px',
                     borderColor: customColors.primary,
                     color: customColors.primary
@@ -759,11 +758,11 @@ const ComplaintsPage: React.FC = () => {
             ) : error ? (
               <Box textAlign="center" p={5}>
                 <Typography color="error">{error}</Typography>
-                <Button 
-                  onClick={refreshCurrentTab} 
-                  variant="outlined" 
-                  sx={{ 
-                    mt: 2, 
+                <Button
+                  onClick={refreshCurrentTab}
+                  variant="outlined"
+                  sx={{
+                    mt: 2,
                     borderRadius: '12px',
                     borderColor: customColors.primary,
                     color: customColors.primary
@@ -806,4 +805,4 @@ const ComplaintsPage: React.FC = () => {
   );
 };
 
-export default ComplaintsPage; 
+export default ComplaintsPage;

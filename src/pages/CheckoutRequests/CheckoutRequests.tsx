@@ -186,8 +186,6 @@ const CheckoutRequests: React.FC = () => {
 
   // حالة حوار إرسال الإشعار
   const [notificationDialogOpen, setNotificationDialogOpen] = useState(false);
-  const [inAppNotificationDialogOpen, setInAppNotificationDialogOpen] = useState(false);
-  const [pushNotificationDialogOpen, setPushNotificationDialogOpen] = useState(false);
   const [requestToNotify, setRequestToNotify] = useState<CheckoutRequest | null>(null);
   const [notificationMessage, setNotificationMessage] = useState('');
   const [notificationTitle, setNotificationTitle] = useState('');
@@ -409,41 +407,13 @@ const CheckoutRequests: React.FC = () => {
     setNotificationDialogOpen(true);
   };
 
-  // فتح حوار إرسال الإشعار داخل التطبيق
-  const openInAppNotificationDialog = (request: CheckoutRequest) => {
-    setRequestToNotify(request);
-    setNotificationTitle(`تأكيد حجز ${request.propertyName}`);
-    setNotificationMessage(`تم الحجز بنجاح لـ ${request.propertyName}.لمزيد من التفاصيل يرجى التواصل معنا على الرقم 01093130120.`);
-    setInAppNotificationDialogOpen(true);
-  };
-
-  // فتح حوار إرسال الإشعار خارج التطبيق
-  const openPushNotificationDialog = (request: CheckoutRequest) => {
-    setRequestToNotify(request);
-    setNotificationTitle(`تأكيد حجز ${request.propertyName}`);
-    setNotificationMessage(`تم الحجز بنجاح لـ ${request.propertyName}.لمزيد من التفاصيل يرجى التواصل معنا على الرقم 01093130120.`);
-    setPushNotificationDialogOpen(true);
-  };
-
   // إغلاق حوار إرسال الإشعار
   const closeNotificationDialog = () => {
     setRequestToNotify(null);
     setNotificationDialogOpen(false);
   };
 
-  // إغلاق حوار إرسال الإشعار داخل التطبيق
-  const closeInAppNotificationDialog = () => {
-    setRequestToNotify(null);
-    setInAppNotificationDialogOpen(false);
-  };
-
-  // إغلاق حوار إرسال الإشعار خارج التطبيق
-  const closePushNotificationDialog = () => {
-    setRequestToNotify(null);
-    setPushNotificationDialogOpen(false);
-  };
-
-  // إرسال إشعار للمستخدم
+  // إرسال إشعار للمستخدم (داخل وخارج التطبيق)
   const handleSendNotification = async () => {
     if (!requestToNotify || !requestToNotify.userId) {
       setError('لا يمكن إرسال الإشعار، لا يوجد معرف للمستخدم.');
@@ -456,7 +426,7 @@ const CheckoutRequests: React.FC = () => {
       
       const notificationId = `reservation_${requestToNotify.id}_${Date.now()}`;
       
-      // إضافة إشعار في Firestore للمستخدم
+      // إضافة إشعار في Firestore للمستخدم (داخل التطبيق)
       await addDoc(collection(db, 'notifications'), {
         userId: requestToNotify.userId.trim(),
         title: notificationTitle,
@@ -486,7 +456,7 @@ const CheckoutRequests: React.FC = () => {
         );
         
         console.log('نتيجة إرسال إشعار OneSignal:', oneSignalResult);
-        setSuccess(`تم إرسال الإشعار للمستخدم ${requestToNotify.customerName} بنجاح (داخل التطبيق وخارجه).`);
+        setSuccess(`تم إرسال الإشعارات للمستخدم ${requestToNotify.customerName} بنجاح (داخل التطبيق وخارجه).`);
       } catch (pushError) {
         console.error('فشل إرسال إشعار OneSignal:', pushError);
         // في حالة فشل إرسال الإشعار الخارجي، نعتبر العملية ناجحة لأننا أضفنا الإشعار بنجاح في Firestore على الأقل
@@ -494,7 +464,7 @@ const CheckoutRequests: React.FC = () => {
       }
 
       // إضافة إشعار للمدير في لوحة التحكم
-      await addNotification(`تم إرسال إشعار لـ ${requestToNotify.customerName} بخصوص طلب الحجز: ${requestToNotify.propertyName}`, 'reservation');
+      await addNotification(`تم إرسال إشعارات (داخلية وخارجية) لـ ${requestToNotify.customerName} بخصوص طلب الحجز: ${requestToNotify.propertyName}`, 'reservation');
       
       closeNotificationDialog();
       setNotificationMessage('');
@@ -502,92 +472,6 @@ const CheckoutRequests: React.FC = () => {
       
     } catch (err) {
       console.error('Error sending notification:', err);
-      setError('حدث خطأ أثناء إرسال الإشعار. يرجى المحاولة مرة أخرى.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // إرسال إشعار داخل التطبيق فقط
-  const handleSendInAppNotification = async () => {
-    if (!requestToNotify || !requestToNotify.userId) {
-      setError('لا يمكن إرسال الإشعار، لا يوجد معرف للمستخدم.');
-      closeInAppNotificationDialog();
-      return;
-    }
-
-    try {
-      setLoading(true);
-      
-      const notificationId = `reservation_${requestToNotify.id}_${Date.now()}`;
-      
-      // إضافة إشعار في Firestore للمستخدم
-      await addDoc(collection(db, 'notifications'), {
-        userId: requestToNotify.userId.trim(),
-        title: notificationTitle,
-        body: notificationMessage,
-        type: 'reservation',
-        timestamp: new Date(),
-        isRead: false,
-        additionalData: {
-          requestId: requestToNotify.id,
-          propertyName: requestToNotify.propertyName,
-        },
-        targetScreen: 'BookingDetails',
-      });
-
-      // إضافة إشعار للمدير في لوحة التحكم
-      await addNotification(`تم إرسال إشعار داخلي لـ ${requestToNotify.customerName} بخصوص طلب الحجز: ${requestToNotify.propertyName}`, 'reservation');
-      
-      setSuccess(`تم إرسال الإشعار داخل التطبيق للمستخدم ${requestToNotify.customerName} بنجاح.`);
-      closeInAppNotificationDialog();
-      setNotificationMessage('');
-      setNotificationTitle('');
-      
-    } catch (err) {
-      console.error('Error sending in-app notification:', err);
-      setError('حدث خطأ أثناء إرسال الإشعار. يرجى المحاولة مرة أخرى.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // إرسال إشعار خارج التطبيق فقط
-  const handleSendPushNotification = async () => {
-    if (!requestToNotify || !requestToNotify.userId) {
-      setError('لا يمكن إرسال الإشعار، لا يوجد معرف للمستخدم.');
-      closePushNotificationDialog();
-      return;
-    }
-
-    try {
-      setLoading(true);
-      
-      // إرسال إشعار خارجي باستخدام OneSignal
-      const oneSignalResult = await sendOneSignalNotification(
-        requestToNotify.userId.trim(),
-        notificationTitle,
-        notificationMessage,
-        {
-          type: 'reservation',
-          requestId: requestToNotify.id,
-          propertyName: requestToNotify.propertyName,
-          targetScreen: 'BookingDetails'
-        }
-      );
-      
-      console.log('نتيجة إرسال إشعار OneSignal:', oneSignalResult);
-      
-      // إضافة إشعار للمدير في لوحة التحكم
-      await addNotification(`تم إرسال إشعار خارجي لـ ${requestToNotify.customerName} بخصوص طلب الحجز: ${requestToNotify.propertyName}`, 'reservation');
-      
-      setSuccess(`تم إرسال الإشعار خارج التطبيق للمستخدم ${requestToNotify.customerName} بنجاح.`);
-      closePushNotificationDialog();
-      setNotificationMessage('');
-      setNotificationTitle('');
-      
-    } catch (err) {
-      console.error('Error sending push notification:', err);
       setError('حدث خطأ أثناء إرسال الإشعار. يرجى المحاولة مرة أخرى.');
     } finally {
       setLoading(false);
@@ -846,26 +730,14 @@ const CheckoutRequests: React.FC = () => {
                             <VisibilityIcon />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="إرسال إشعار داخل التطبيق">
-                          <IconButton
-                            color="info"
-                            onClick={() => openInAppNotificationDialog(request)}
-                            sx={{ ml: 1 }}
-                            disabled={!request.userId}
-                          >
-                            <Badge badgeContent="داخلي" color="info" sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', height: '16px', minWidth: '16px' } }}>
-                              <NotificationsIcon />
-                            </Badge>
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="إرسال إشعار خارج التطبيق">
+                        <Tooltip title="إرسال إشعار للمستخدم (داخل وخارج التطبيق)">
                           <IconButton
                             color="primary"
-                            onClick={() => openPushNotificationDialog(request)}
+                            onClick={() => openNotificationDialog(request)}
                             sx={{ ml: 1 }}
                             disabled={!request.userId}
                           >
-                            <Badge badgeContent="خارجي" color="primary" sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', height: '16px', minWidth: '16px' } }}>
+                            <Badge badgeContent="إشعار" color="primary" sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', height: '16px', minWidth: '16px' } }}>
                               <NotificationsIcon />
                             </Badge>
                           </IconButton>
@@ -973,121 +845,6 @@ const CheckoutRequests: React.FC = () => {
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>إرسال إشعار للمستخدم</DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ mb: 2 }}>
-            سيتم إرسال هذا الإشعار للمستخدم {requestToNotify?.customerName || ''} بخصوص طلب حجز {requestToNotify?.propertyName || ''}
-          </DialogContentText>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="عنوان الإشعار"
-            type="text"
-            fullWidth
-            value={notificationTitle}
-            onChange={(e) => setNotificationTitle(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            label="نص الإشعار"
-            type="text"
-            fullWidth
-            multiline
-            rows={4}
-            value={notificationMessage}
-            onChange={(e) => setNotificationMessage(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closeNotificationDialog} color="primary">
-            إلغاء
-          </Button>
-          <Button 
-            onClick={handleSendNotification} 
-            color="primary" 
-            variant="contained"
-            disabled={!notificationMessage || !notificationTitle}
-          >
-            إرسال
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* In-App Notification Dialog */}
-      <Dialog
-        open={inAppNotificationDialogOpen}
-        onClose={closeInAppNotificationDialog}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle sx={{ 
-          fontWeight: 600, 
-          color: 'info.main', 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: 1 
-        }}>
-          <NotificationsIcon />
-          إرسال إشعار داخل التطبيق
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ mb: 2 }}>
-            سيتم إرسال هذا الإشعار داخل التطبيق فقط للمستخدم {requestToNotify?.customerName || ''} بخصوص طلب حجز {requestToNotify?.propertyName || ''}
-          </DialogContentText>
-
-          <Alert severity="info" sx={{ mb: 2 }}>
-            هذا الإشعار سيظهر فقط داخل التطبيق في قائمة الإشعارات ولن يتم إرساله كإشعار دفعي.
-          </Alert>
-
-          <TextField
-            autoFocus
-            margin="dense"
-            label="عنوان الإشعار"
-            type="text"
-            fullWidth
-            value={notificationTitle}
-            onChange={(e) => setNotificationTitle(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            label="نص الإشعار"
-            type="text"
-            fullWidth
-            multiline
-            rows={4}
-            value={notificationMessage}
-            onChange={(e) => setNotificationMessage(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button 
-            onClick={closeInAppNotificationDialog} 
-            variant="outlined"
-            color="inherit"
-          >
-            إلغاء
-          </Button>
-          <Button 
-            onClick={handleSendInAppNotification} 
-            variant="contained"
-            color="info"
-            startIcon={<NotificationsIcon />}
-            disabled={!notificationMessage || !notificationTitle || loading}
-          >
-            {loading ? 'جارٍ الإرسال...' : 'إرسال الإشعار داخل التطبيق'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Push Notification Dialog */}
-      <Dialog
-        open={pushNotificationDialogOpen}
-        onClose={closePushNotificationDialog}
-        maxWidth="sm"
-        fullWidth
-      >
         <DialogTitle sx={{ 
           fontWeight: 600, 
           color: 'primary.main', 
@@ -1096,17 +853,17 @@ const CheckoutRequests: React.FC = () => {
           gap: 1 
         }}>
           <NotificationsIcon />
-          إرسال إشعار خارج التطبيق
+          إرسال إشعار للمستخدم
         </DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ mb: 2 }}>
-            سيتم إرسال هذا الإشعار خارج التطبيق (إشعار دفعي) للمستخدم {requestToNotify?.customerName || ''} بخصوص طلب حجز {requestToNotify?.propertyName || ''}
+            سيتم إرسال هذا الإشعار للمستخدم {requestToNotify?.customerName || ''} بخصوص طلب حجز {requestToNotify?.propertyName || ''}
           </DialogContentText>
-
+          
           <Alert severity="info" sx={{ mb: 2 }}>
-            هذا الإشعار سيظهر خارج التطبيق كإشعار دفعي على جهاز المستخدم ولن يظهر في قائمة الإشعارات داخل التطبيق.
+            سيظهر هذا الإشعار داخل التطبيق في قائمة الإشعارات وسيتم إرساله أيضاً كإشعار خارجي على جهاز المستخدم.
           </Alert>
-
+          
           <TextField
             autoFocus
             margin="dense"
@@ -1130,20 +887,20 @@ const CheckoutRequests: React.FC = () => {
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button 
-            onClick={closePushNotificationDialog} 
+            onClick={closeNotificationDialog} 
             variant="outlined"
             color="inherit"
           >
             إلغاء
           </Button>
           <Button 
-            onClick={handleSendPushNotification} 
+            onClick={handleSendNotification} 
             variant="contained"
             color="primary"
             startIcon={<NotificationsIcon />}
             disabled={!notificationMessage || !notificationTitle || loading}
           >
-            {loading ? 'جارٍ الإرسال...' : 'إرسال الإشعار خارج التطبيق'}
+            {loading ? 'جارٍ الإرسال...' : 'إرسال الإشعارات'}
           </Button>
         </DialogActions>
       </Dialog>

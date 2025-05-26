@@ -115,13 +115,13 @@ const NavBar: React.FC<NavBarProps> = ({ title }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
-  
+
   // States
   const [anchorElUser, setAnchorElUser] = useState<null | HTMLElement>(null);
   const [anchorElNotifications, setAnchorElNotifications] = useState<null | HTMLElement>(null);
   const [anchorElMore, setAnchorElMore] = useState<null | HTMLElement>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  
+
   // Use notifications from context
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
 
@@ -152,7 +152,7 @@ const NavBar: React.FC<NavBarProps> = ({ title }) => {
       path: '/checkout-requests',
     },
   ];
-  
+
   // More menu items
   const moreMenuItems: NavMenuItem[] = [
     {
@@ -201,7 +201,7 @@ const NavBar: React.FC<NavBarProps> = ({ title }) => {
   const handleCloseNotificationsMenu = () => {
     setAnchorElNotifications(null);
   };
-  
+
   const handleOpenMoreMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElMore(event.currentTarget);
   };
@@ -252,7 +252,7 @@ const NavBar: React.FC<NavBarProps> = ({ title }) => {
     <>
       <StyledAppBar>
         <Container maxWidth={false}>
-          <Toolbar disableGutters sx={{ 
+          <Toolbar disableGutters sx={{
             minHeight: { xs: 64, md: 70 },
             px: { xs: 1, sm: 2 },
             direction: 'rtl'
@@ -280,16 +280,16 @@ const NavBar: React.FC<NavBarProps> = ({ title }) => {
                   e.preventDefault();
                   navigate('/dashboard');
                 }}
-                sx={{ 
+                sx={{
                   display: 'flex',
                   alignItems: 'center',
                   textDecoration: 'none'
                 }}
               >
-                <Avatar 
+                <Avatar
                   src="/logo512.png"
-                  sx={{ 
-                    width: 38, 
+                  sx={{
+                    width: 38,
                     height: 38,
                     boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
                   }}
@@ -310,7 +310,7 @@ const NavBar: React.FC<NavBarProps> = ({ title }) => {
                   </Typography>
                 )}
               </Box>
-              
+
               {/* Page Title */}
               {title && !isSmallScreen && (
                 <PageTitle>{title}</PageTitle>
@@ -318,9 +318,9 @@ const NavBar: React.FC<NavBarProps> = ({ title }) => {
             </LogoContainer>
 
             {/* Navigation Links - For Medium+ screens */}
-            <Box sx={{ 
-              flexGrow: 1, 
-              display: { xs: 'none', md: 'flex' }, 
+            <Box sx={{
+              flexGrow: 1,
+              display: { xs: 'none', md: 'flex' },
               justifyContent: 'center',
               mr: 4
             }}>
@@ -333,7 +333,7 @@ const NavBar: React.FC<NavBarProps> = ({ title }) => {
                   {item.text}
                 </NavButton>
               ))}
-              
+
               {/* More Button with Dropdown */}
               <NavButton
                 onClick={handleOpenMoreMenu}
@@ -348,8 +348,8 @@ const NavBar: React.FC<NavBarProps> = ({ title }) => {
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               {/* Notifications */}
               <Tooltip title="الإشعارات">
-                <IconButton 
-                  onClick={handleOpenNotificationsMenu} 
+                <IconButton
+                  onClick={handleOpenNotificationsMenu}
                   sx={{ mr: 1, color: 'white' }}
                 >
                   <Badge badgeContent={unreadCount} color="error">
@@ -362,15 +362,15 @@ const NavBar: React.FC<NavBarProps> = ({ title }) => {
               <Box sx={{ mr: 0 }}>
                 <Tooltip title="الملف الشخصي">
                   <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                    <Avatar 
-                      alt="Eslam Zayed" 
-                      src="/admin_profile.jpg" 
-                      sx={{ 
-                        width: 40, 
-                        height: 40, 
+                    <Avatar
+                      alt="Eslam Zayed"
+                      src="/admin_profile.jpg"
+                      sx={{
+                        width: 40,
+                        height: 40,
                         border: '2px solid white',
                         boxShadow: '0 0 10px rgba(0,0,0,0.1)'
-                      }} 
+                      }}
                     />
                   </IconButton>
                 </Tooltip>
@@ -397,10 +397,10 @@ const NavBar: React.FC<NavBarProps> = ({ title }) => {
         anchorOrigin={{ horizontal: 'center', vertical: 'bottom' }}
       >
         {moreMenuItems.map((item) => (
-          <MenuItem 
-            key={item.text} 
+          <MenuItem
+            key={item.text}
             onClick={() => handleNavigation(item.path)}
-            sx={{ 
+            sx={{
               py: 1.2,
               '&:hover': {
                 backgroundColor: 'rgba(25, 118, 210, 0.08)',
@@ -429,11 +429,29 @@ const NavBar: React.FC<NavBarProps> = ({ title }) => {
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
-        <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>الإشعارات</Typography>
+        <Box sx={{ p: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography
+            variant="subtitle1"
+            sx={{
+              fontWeight: 600,
+              fontSize: '1rem'
+            }}
+          >
+            الإشعارات
+          </Typography>
           <Tooltip title="تعليم الكل كمقروء">
             <IconButton size="small" onClick={handleMarkAllAsRead}>
-              <Badge badgeContent={unreadCount} color="error" sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem' } }}>
+              <Badge
+                badgeContent={unreadCount}
+                color="error"
+                sx={{
+                  '& .MuiBadge-badge': {
+                    fontSize: '0.6rem',
+                    minWidth: 16,
+                    height: 16
+                  }
+                }}
+              >
                 <NotificationsIcon fontSize="small" />
               </Badge>
             </IconButton>
@@ -441,52 +459,82 @@ const NavBar: React.FC<NavBarProps> = ({ title }) => {
         </Box>
         <Divider />
         {notifications.length === 0 ? (
-          <Box sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="body2" color="text.secondary">
+          <Box sx={{ p: 2, textAlign: 'center' }}>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{
+                fontSize: '0.8rem',
+                fontStyle: 'italic'
+              }}
+            >
               لا توجد إشعارات
             </Typography>
           </Box>
-        ) : (
-          <>
-            {notifications.slice(0, 5).map((notification) => (
-              <MenuItem 
-                key={notification.id} 
-                onClick={() => handleNotificationClick(notification.id)} 
-                sx={{ 
-                  py: 1.5, 
-                  backgroundColor: notification.read ? 'transparent' : 'rgba(25, 118, 210, 0.08)'
-                }}
-              >
-                <Box sx={{ width: '100%' }}>
-                  <Typography 
-                    variant="body1" 
-                    sx={{ 
-                      fontWeight: notification.read ? 'normal' : 'bold', 
-                      color: notification.read ? 'text.primary' : 'primary.main'
-                    }}
-                  >
-                    {notification.message}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">{notification.time}</Typography>
-                </Box>
-              </MenuItem>
-            ))}
-            {notifications.length > 5 && (
-              <Box sx={{ p: 1, textAlign: 'center' }}>
+        ) : [
+          ...notifications.slice(0, 5).map((notification) => (
+            <MenuItem
+              key={notification.id}
+              onClick={() => handleNotificationClick(notification.id)}
+              sx={{
+                py: 1,
+                px: 2,
+                backgroundColor: notification.read ? 'transparent' : 'rgba(25, 118, 210, 0.08)',
+                '&:hover': {
+                  backgroundColor: 'rgba(25, 118, 210, 0.12)'
+                }
+              }}
+            >
+              <Box sx={{ width: '100%' }}>
                 <Typography
                   variant="body2"
                   sx={{
-                    color: 'primary.main',
-                    cursor: 'pointer',
-                    '&:hover': { textDecoration: 'underline' }
+                    fontWeight: notification.read ? 'normal' : 'bold',
+                    color: notification.read ? 'text.primary' : 'primary.main',
+                    fontSize: '0.85rem',
+                    lineHeight: 1.3,
+                    mb: 0.3
                   }}
                 >
-                  عرض كل الإشعارات ({notifications.length})
+                  {notification.message}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{
+                    fontSize: '0.7rem',
+                    opacity: 0.8
+                  }}
+                >
+                  {notification.time}
                 </Typography>
               </Box>
-            )}
-          </>
-        )}
+            </MenuItem>
+          )),
+          ...(notifications.length > 5 ? [
+            <Box key="show-all" sx={{ p: 1, textAlign: 'center' }}>
+              <Typography
+                variant="caption"
+                onClick={() => {
+                  handleCloseNotificationsMenu();
+                  navigate('/notifications');
+                }}
+                sx={{
+                  color: 'primary.main',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                  fontWeight: 500,
+                  '&:hover': {
+                    textDecoration: 'underline',
+                    color: 'primary.dark'
+                  }
+                }}
+              >
+                عرض كل الإشعارات ({notifications.length})
+              </Typography>
+            </Box>
+          ] : [])
+        ]}
       </Menu>
 
       {/* User Menu */}
@@ -505,7 +553,7 @@ const NavBar: React.FC<NavBarProps> = ({ title }) => {
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
-        {userMenuItems.map((item) => item)}
+        {userMenuItems}
       </Menu>
 
       {/* Mobile Drawer Navigation */}
@@ -523,20 +571,20 @@ const NavBar: React.FC<NavBarProps> = ({ title }) => {
         }}
       >
         <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
-          <Avatar 
+          <Avatar
             src="/logo512.png"
-            sx={{ 
-              width: 35, 
+            sx={{
+              width: 35,
               height: 35,
               boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-            }} 
+            }}
           />
           <Typography variant="h6" sx={{ mr: 1, fontWeight: 600 }}>
             السهم للتسكين
           </Typography>
         </Box>
         <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
-        
+
         {/* Admin Info */}
         <Box sx={{ p: 1.5, textAlign: 'center', mb: 1 }}>
           <Avatar
@@ -556,9 +604,9 @@ const NavBar: React.FC<NavBarProps> = ({ title }) => {
             Admin Elsahm
           </Typography>
         </Box>
-        
+
         <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)', mb: 1 }} />
-        
+
         {/* Mobile Menu Items */}
         <List sx={{ px: 1.5 }}>
           {menuItems.map((item) => {
@@ -603,13 +651,13 @@ const NavBar: React.FC<NavBarProps> = ({ title }) => {
               </ListItem>
             );
           })}
-          
+
           {/* Add More Menu Items to the Mobile Drawer */}
           <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)', my: 1 }} />
           <Typography variant="caption" sx={{ px: 2, color: 'rgba(255, 255, 255, 0.5)' }}>
             خيارات إضافية
           </Typography>
-          
+
           {moreMenuItems.map((item) => {
             const active = isActive(item.path);
             return (
@@ -653,9 +701,9 @@ const NavBar: React.FC<NavBarProps> = ({ title }) => {
             );
           })}
         </List>
-        
+
         <Box sx={{ flexGrow: 1 }} />
-        
+
         <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
         <Box sx={{ p: 2 }}>
           <Typography
@@ -677,4 +725,4 @@ const NavBar: React.FC<NavBarProps> = ({ title }) => {
   );
 };
 
-export default NavBar; 
+export default NavBar;

@@ -33,6 +33,9 @@ import {
   BarChart as BarChartIcon,
   AttachMoney as AttachMoneyIcon,
   MoneyOff as MoneyOffIcon,
+  ChatBubbleOutline,
+  FiberNew,
+  HourglassEmpty,
 } from '@mui/icons-material';
 import {
   PropertySearchIcon,
@@ -44,6 +47,7 @@ import Layout from '../../components/Layout';
 import { dashboardApi, checkoutRequestsApi } from '../../services/api';
 import { supabasePropertiesApi } from '../../services/supabaseApi';
 import { categoriesApi } from '../../services/categoriesApi';
+import { fetchAllComplaints } from '../../services/complaintsApi';
 import {
   ResponsiveContainer,
   ResponsiveGrid,
@@ -71,6 +75,11 @@ interface DashboardStats {
   pendingPaymentRequestsCount?: number;
   completedPaymentRequestsCount?: number;
   totalPaymentAmount?: number;
+  // Stats for complaints
+  complaintsCount?: number;
+  openComplaintsCount?: number;
+  inProgressComplaintsCount?: number;
+  closedComplaintsCount?: number;
 }
 
 // Create a cache object for dashboard data
@@ -93,8 +102,8 @@ const Dashboard: React.FC = () => {
     try {
       // Check if we have valid cached data
       const now = Date.now();
-      if (!forceRefresh && 
-          dashboardDataCache.data && 
+      if (!forceRefresh &&
+          dashboardDataCache.data &&
           (now - dashboardDataCache.timestamp) < CACHE_EXPIRY_TIME) {
         console.log('Using cached dashboard data');
         setStats(dashboardDataCache.data);
@@ -115,11 +124,13 @@ const Dashboard: React.FC = () => {
         propertiesWithCommissionRes,
         categoriesRes,
         checkoutRequestsResponse,
+        complaintsData,
       ] = await Promise.all([
         dashboardApi.getStats(),
-        supabasePropertiesApi.getAll(), 
+        supabasePropertiesApi.getAll(),
         categoriesApi.getAll(),
-        checkoutRequestsApi.getAll()
+        checkoutRequestsApi.getAll(),
+        fetchAllComplaints(),
       ]);
 
       // جلب طلبات الدفع من Supabase
@@ -157,6 +168,19 @@ const Dashboard: React.FC = () => {
         .filter(r => r.status === 'approved')
         .reduce((sum, r) => sum + (r.amount || 0), 0);
 
+      // معالجة بيانات الشكاوى
+      const complaintsCount = complaintsData.length;
+      const openComplaintsCount = complaintsData.filter(c => c.status === 'open').length;
+      const inProgressComplaintsCount = complaintsData.filter(c => c.status === 'in-progress').length;
+      const closedComplaintsCount = complaintsData.filter(c => c.status === 'closed').length;
+
+      console.log('Complaints data:', {
+        complaintsCount,
+        openComplaintsCount,
+        inProgressComplaintsCount,
+        closedComplaintsCount
+      });
+
       // تحديث الإحصائيات
       const updatedStats: DashboardStats = {
         ...statsRes.data,
@@ -171,7 +195,12 @@ const Dashboard: React.FC = () => {
         paymentRequestsCount,
         pendingPaymentRequestsCount,
         completedPaymentRequestsCount,
-        totalPaymentAmount
+        totalPaymentAmount,
+        // Add complaints stats
+        complaintsCount,
+        openComplaintsCount,
+        inProgressComplaintsCount,
+        closedComplaintsCount
       };
 
       // تخزين البيانات في الذاكرة المؤقتة
@@ -196,12 +225,12 @@ const Dashboard: React.FC = () => {
   // جلب البيانات عند تحميل الصفحة
   useEffect(() => {
     fetchDashboardData();
-    
+
     // إعداد تحديث تلقائي للبيانات
     const refreshInterval = setInterval(() => {
       fetchDashboardData(true);
     }, CACHE_EXPIRY_TIME);
-    
+
     return () => clearInterval(refreshInterval);
   }, [fetchDashboardData]);
 
@@ -231,16 +260,16 @@ const Dashboard: React.FC = () => {
   if (error) {
     return (
       <Layout title="لوحة التحكم">
-        <Box sx={{ 
-          p: 4, 
-          display: 'flex', 
-          flexDirection: 'column', 
+        <Box sx={{
+          p: 4,
+          display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'center', 
-          height: '50vh' 
+          justifyContent: 'center',
+          height: '50vh'
         }}>
-          <Alert 
-            severity="error" 
+          <Alert
+            severity="error"
             sx={{
               mb: 3,
               width: '100%',
@@ -251,10 +280,10 @@ const Dashboard: React.FC = () => {
           >
             <Typography variant="body1">{error}</Typography>
           </Alert>
-          <Button 
-            variant="contained" 
-            onClick={handleRefresh} 
-            sx={{ 
+          <Button
+            variant="contained"
+            onClick={handleRefresh}
+            sx={{
               mt: 2,
               px: 4,
               py: 1,
@@ -286,27 +315,27 @@ const Dashboard: React.FC = () => {
 
       <Box sx={{ position: 'relative' }}>
         {/* Header with refresh button - تعديل لجعل العنوان في المنتصف */}
-        <Box 
-          sx={{ 
-            display: 'flex', 
+        <Box
+          sx={{
+            display: 'flex',
             flexDirection: { xs: 'column', sm: 'row' },
-            justifyContent: 'space-between', 
+            justifyContent: 'space-between',
             alignItems: 'center',
             mb: 4,
             textAlign: 'center' // إضافة محاذاة نصية للمنتصف
           }}
         >
-          <Box sx={{ 
-            flex: 1, 
-            display: 'flex', 
+          <Box sx={{
+            flex: 1,
+            display: 'flex',
             flexDirection: 'column',
             alignItems: 'center', // توسيط العناصر أفقياً
-            width: '100%' 
+            width: '100%'
           }}>
-            <Typography 
-              variant="h4" 
-              sx={{ 
-                fontWeight: 800, 
+            <Typography
+              variant="h4"
+              sx={{
+                fontWeight: 800,
                 fontSize: { xs: '1.8rem', md: '2.2rem' },
                 background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
                 backgroundClip: 'text',
@@ -321,14 +350,14 @@ const Dashboard: React.FC = () => {
               اطلع على أحدث الإحصائيات وأدر نظامك بسهولة وفعالية
             </Typography>
           </Box>
-          
+
           <Box sx={{ mt: { xs: 2, sm: 0 } }}>
             <Tooltip title="تحديث البيانات">
-              <IconButton 
-                onClick={handleRefresh} 
+              <IconButton
+                onClick={handleRefresh}
                 color="primary"
-                sx={{ 
-                  bgcolor: 'rgba(33, 150, 243, 0.1)', 
+                sx={{
+                  bgcolor: 'rgba(33, 150, 243, 0.1)',
                   borderRadius: 2,
                   '&:hover': {
                     bgcolor: 'rgba(33, 150, 243, 0.2)',
@@ -345,10 +374,10 @@ const Dashboard: React.FC = () => {
         <Box sx={{ mb: 5 }}>
           <Grid container spacing={3}>
             <Grid item xs={12} sm={6} md={3}>
-              <Card 
-                elevation={0} 
-                sx={{ 
-                  borderRadius: 3, 
+              <Card
+                elevation={0}
+                sx={{
+                  borderRadius: 3,
                   boxShadow: '0 5px 20px rgba(25,118,210,0.15)',
                   background: 'linear-gradient(135deg, rgba(227,242,253,0.7) 0%, rgba(187,222,251,0.55) 100%)',
                   backdropFilter: 'blur(8px)',
@@ -358,16 +387,16 @@ const Dashboard: React.FC = () => {
               >
                 <CardContent sx={{ p: 3 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <Typography 
-                      variant="h5" 
+                    <Typography
+                      variant="h5"
                       sx={{ fontWeight: 700, color: palette.primary.main }}
                     >
                       {stats?.propertiesCount || 0}
                     </Typography>
-                    <IconButton 
-                      sx={{ 
-                        bgcolor: palette.primary.main, 
-                        width: 40, 
+                    <IconButton
+                      sx={{
+                        bgcolor: palette.primary.main,
+                        width: 40,
                         height: 40,
                         color: 'white'
                       }}
@@ -384,10 +413,10 @@ const Dashboard: React.FC = () => {
             </Grid>
 
             <Grid item xs={12} sm={6} md={3}>
-              <Card 
-                elevation={0} 
-                sx={{ 
-                  borderRadius: 3, 
+              <Card
+                elevation={0}
+                sx={{
+                  borderRadius: 3,
                   boxShadow: '0 5px 20px rgba(76,175,80,0.15)',
                   background: 'linear-gradient(135deg, rgba(232,245,233,0.7) 0%, rgba(200,230,201,0.55) 100%)',
                   backdropFilter: 'blur(8px)',
@@ -397,16 +426,16 @@ const Dashboard: React.FC = () => {
               >
                 <CardContent sx={{ p: 3 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <Typography 
-                      variant="h5" 
+                    <Typography
+                      variant="h5"
                       sx={{ fontWeight: 700, color: palette.success.main }}
                     >
                       {stats?.usersCount || 0}
                     </Typography>
-                    <IconButton 
-                      sx={{ 
-                        bgcolor: palette.success.main, 
-                        width: 40, 
+                    <IconButton
+                      sx={{
+                        bgcolor: palette.success.main,
+                        width: 40,
                         height: 40,
                         color: 'white'
                       }}
@@ -423,10 +452,10 @@ const Dashboard: React.FC = () => {
             </Grid>
 
             <Grid item xs={12} sm={6} md={3}>
-              <Card 
-                elevation={0} 
-                sx={{ 
-                  borderRadius: 3, 
+              <Card
+                elevation={0}
+                sx={{
+                  borderRadius: 3,
                   boxShadow: '0 5px 20px rgba(255,152,0,0.15)',
                   background: 'linear-gradient(135deg, rgba(255,243,224,0.7) 0%, rgba(255,224,178,0.55) 100%)',
                   backdropFilter: 'blur(8px)',
@@ -436,16 +465,16 @@ const Dashboard: React.FC = () => {
               >
                 <CardContent sx={{ p: 3 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <Typography 
-                      variant="h5" 
+                    <Typography
+                      variant="h5"
                       sx={{ fontWeight: 700, color: palette.warning.main }}
                     >
                       {stats?.checkoutRequestsCount || 0}
                     </Typography>
-                    <IconButton 
-                      sx={{ 
-                        bgcolor: palette.warning.main, 
-                        width: 40, 
+                    <IconButton
+                      sx={{
+                        bgcolor: palette.warning.main,
+                        width: 40,
                         height: 40,
                         color: 'white'
                       }}
@@ -462,10 +491,10 @@ const Dashboard: React.FC = () => {
             </Grid>
 
             <Grid item xs={12} sm={6} md={3}>
-              <Card 
-                elevation={0} 
-                sx={{ 
-                  borderRadius: 3, 
+              <Card
+                elevation={0}
+                sx={{
+                  borderRadius: 3,
                   boxShadow: '0 5px 20px rgba(3,169,244,0.15)',
                   background: 'linear-gradient(135deg, rgba(225,245,254,0.7) 0%, rgba(179,229,252,0.55) 100%)',
                   backdropFilter: 'blur(8px)',
@@ -475,16 +504,16 @@ const Dashboard: React.FC = () => {
               >
                 <CardContent sx={{ p: 3 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <Typography 
-                      variant="h5" 
+                    <Typography
+                      variant="h5"
                       sx={{ fontWeight: 700, color: palette.info.main, direction: 'ltr' }}
                     >
                       {formatPrice(stats?.totalCommission || 0)}
                     </Typography>
-                    <IconButton 
-                      sx={{ 
-                        bgcolor: palette.info.main, 
-                        width: 40, 
+                    <IconButton
+                      sx={{
+                        bgcolor: palette.info.main,
+                        width: 40,
                         height: 40,
                         color: 'white'
                       }}
@@ -503,21 +532,21 @@ const Dashboard: React.FC = () => {
         </Box>
 
         {/* الإضافات السريعة - تعديل لجعل العنوان في المنتصف */}
-        <Paper 
-          elevation={0} 
-          sx={{ 
-            p: { xs: 3, sm: 4 }, 
-            mb: 5,
-            borderRadius: 4,
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 2, sm: 3 },
+            mb: 3,
+            borderRadius: 3,
             border: '1px solid rgba(0,0,0,0.05)',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.05)'
+            boxShadow: '0 8px 20px rgba(0,0,0,0.04)'
           }}
         >
-          <Box 
-            sx={{ 
-              display: 'flex', 
+          <Box
+            sx={{
+              display: 'flex',
               flexDirection: 'column',
-              justifyContent: 'center', 
+              justifyContent: 'center',
               alignItems: 'center', // توسيط العناصر أفقياً
               mb: 4,
               textAlign: 'center' // إضافة محاذاة نصية للمنتصف
@@ -525,7 +554,7 @@ const Dashboard: React.FC = () => {
           >
             <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 2, sm: 2 } }}>
               <Box
-                sx={{ 
+                sx={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -534,20 +563,20 @@ const Dashboard: React.FC = () => {
                   bgcolor: 'primary.main',
                   borderRadius: '14px',
                   boxShadow: '0 5px 15px rgba(33, 150, 243, 0.2)',
-                  mr: 2 
+                  mr: 2
                 }}
               >
-                <AddIcon 
-                  sx={{ 
-                    color: '#fff', 
+                <AddIcon
+                  sx={{
+                    color: '#fff',
                     fontSize: { xs: 24, sm: 28 }
-                  }} 
+                  }}
                 />
               </Box>
               <Box>
-                <Typography 
-                  variant="h5" 
-                  sx={{ 
+                <Typography
+                  variant="h5"
+                  sx={{
                     fontWeight: 700,
                     position: 'relative',
                     display: 'inline-block',
@@ -557,8 +586,8 @@ const Dashboard: React.FC = () => {
                 >
                   الإضافات السريعة
                 </Typography>
-                <Typography 
-                  variant="body2" 
+                <Typography
+                  variant="body2"
                   color="text.secondary"
                   sx={{ mt: 0.5, textAlign: 'center' }}
                 >
@@ -567,21 +596,21 @@ const Dashboard: React.FC = () => {
               </Box>
             </Box>
 
-            <Chip 
-              label="إدارة سريعة" 
-              color="primary" 
-              variant="outlined" 
-              sx={{ 
-                borderRadius: '10px', 
-                py: 0.5, 
-                px: 1, 
+            <Chip
+              label="إدارة سريعة"
+              color="primary"
+              variant="outlined"
+              sx={{
+                borderRadius: '10px',
+                py: 0.5,
+                px: 1,
                 fontWeight: 600,
                 bgcolor: 'rgba(33, 150, 243, 0.05)'
-              }} 
+              }}
             />
           </Box>
 
-          <Grid container spacing={3}>
+          <Grid container spacing={2}>
             <Grid item xs={12} sm={6} md={3}>
               <QuickActionCard
                 title="إضافة عقار جديد"
@@ -625,29 +654,29 @@ const Dashboard: React.FC = () => {
         </Paper>
 
         {/* قسم إدارة المدفوعات - الجديد */}
-        <Paper 
-          elevation={0} 
-          sx={{ 
-            p: { xs: 3, sm: 4 }, 
-            mb: 5,
-            borderRadius: 4,
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 2, sm: 3 },
+            mb: 3,
+            borderRadius: 3,
             border: '1px solid rgba(0,0,0,0.05)',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.05)'
+            boxShadow: '0 8px 20px rgba(0,0,0,0.04)'
           }}
         >
-          <Box 
-            sx={{ 
-              display: 'flex', 
+          <Box
+            sx={{
+              display: 'flex',
               flexDirection: 'column',
-              justifyContent: 'center', 
-              alignItems: 'center', 
+              justifyContent: 'center',
+              alignItems: 'center',
               mb: 4,
               textAlign: 'center'
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 2, sm: 2 } }}>
               <Box
-                sx={{ 
+                sx={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -656,20 +685,20 @@ const Dashboard: React.FC = () => {
                   bgcolor: 'primary.main',
                   borderRadius: '14px',
                   boxShadow: '0 5px 15px rgba(33, 150, 243, 0.2)',
-                  mr: 2 
+                  mr: 2
                 }}
               >
-                <PaymentIcon 
-                  sx={{ 
-                    color: '#fff', 
+                <PaymentIcon
+                  sx={{
+                    color: '#fff',
                     fontSize: { xs: 24, sm: 28 }
-                  }} 
+                  }}
                 />
               </Box>
               <Box>
-                <Typography 
-                  variant="h5" 
-                  sx={{ 
+                <Typography
+                  variant="h5"
+                  sx={{
                     fontWeight: 700,
                     position: 'relative',
                     display: 'inline-block',
@@ -679,8 +708,8 @@ const Dashboard: React.FC = () => {
                 >
                   إدارة المدفوعات
                 </Typography>
-                <Typography 
-                  variant="body2" 
+                <Typography
+                  variant="body2"
                   color="text.secondary"
                   sx={{ mt: 0.5, textAlign: 'center' }}
                 >
@@ -689,21 +718,21 @@ const Dashboard: React.FC = () => {
               </Box>
             </Box>
 
-            <Chip 
-              label={`${stats?.pendingPaymentRequestsCount || 0} طلب جديد`} 
-              color="secondary" 
-              variant="outlined" 
-              sx={{ 
-                borderRadius: '10px', 
-                py: 0.5, 
-                px: 1, 
+            <Chip
+              label={`${stats?.pendingPaymentRequestsCount || 0} طلب جديد`}
+              color="secondary"
+              variant="outlined"
+              sx={{
+                borderRadius: '10px',
+                py: 0.5,
+                px: 1,
                 fontWeight: 600,
                 bgcolor: 'rgba(156, 39, 176, 0.05)'
-              }} 
+              }}
             />
           </Box>
 
-          <Grid container spacing={3}>
+          <Grid container spacing={2}>
             <Grid item xs={12} sm={6} md={4}>
               <QuickActionCard
                 title="طرق الدفع"
@@ -736,60 +765,116 @@ const Dashboard: React.FC = () => {
           </Grid>
         </Paper>
 
-        {/* Decorative Separator */}
-        <Box 
-          sx={{ 
-            display: 'flex',
-            justifyContent: 'center',
-            width: '100%',
-            my: 5,
-            overflow: 'hidden'
+        {/* قسم إدارة الشكاوي */}
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 2, sm: 3 },
+            mb: 3,
+            borderRadius: 3,
+            border: '1px solid rgba(0,0,0,0.05)',
+            boxShadow: '0 8px 20px rgba(0,0,0,0.04)'
           }}
         >
-          <Box
-            component="img"
-            src="/fasel.png"
-            alt="فاصل زخرفي"
-            sx={{
-              width: '100%',
-              maxWidth: 1200,
-              height: 'auto',
-              maxHeight: 80,
-              objectFit: 'contain',
-              opacity: 0.9
-            }}
-          />
-        </Box>
+          <Box sx={{ textAlign: 'center', mb: 4 }}>
+            <Box
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mb: 2
+              }}
+            >
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: { xs: 42, sm: 50 },
+                  height: { xs: 42, sm: 50 },
+                  backgroundImage: 'linear-gradient(45deg, #0288D1, #03A9F4)',
+                  borderRadius: '14px',
+                  boxShadow: '0 5px 15px rgba(2, 136, 209, 0.2)',
+                  mr: 2
+                }}
+              >
+                <ChatBubbleOutline
+                  sx={{
+                    color: '#fff',
+                    fontSize: { xs: 24, sm: 28 }
+                  }}
+                />
+              </Box>
+              <Box>
+                <Typography
+                  variant="h5"
+                  sx={{
+                    fontWeight: 700,
+                    position: 'relative',
+                    display: 'inline-block',
+                    fontSize: { xs: '1.25rem', sm: '1.5rem' }
+                  }}
+                >
+                  إدارة الشكاوي
+                </Typography>
+              </Box>
+            </Box>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mb: 2 }}
+            >
+              متابعة ومعالجة شكاوي العملاء والمستخدمين
+            </Typography>
+            <Chip
+              label={`${stats?.openComplaintsCount || 0} شكوى مفتوحة`}
+              color="info"
+              variant="outlined"
+              sx={{
+                borderRadius: '10px',
+                py: 0.5,
+                px: 1,
+                fontWeight: 600,
+                bgcolor: 'rgba(2, 136, 209, 0.05)'
+              }}
+            />
+          </Box>
 
-        {/* Footer Separator */}
-        <Box 
-          sx={{ 
-            display: 'flex',
-            justifyContent: 'center',
-            width: '100%',
-            mt: 4,
-            mb: 2,
-            overflow: 'hidden'
-          }}
-        >
-          <Box
-            component="img"
-            src="/fasel.png"
-            alt="فاصل زخرفي"
-            sx={{
-              width: '100%',
-              maxWidth: 1200,
-              height: 'auto',
-              maxHeight: 80,
-              objectFit: 'contain',
-              opacity: 0.7,
-              transform: 'scaleY(-1)'
-            }}
-          />
-        </Box>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} md={4}>
+              <QuickActionCard
+                title="جميع الشكاوي"
+                description={`${stats?.complaintsCount || 0} شكوى`}
+                icon={<ChatBubbleOutline />}
+                onClick={() => navigate('/complaints')}
+                color="#0288D1"
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={4}>
+              <QuickActionCard
+                title="شكاوي مفتوحة"
+                description={`${stats?.openComplaintsCount || 0} قيد الانتظار`}
+                icon={<FiberNew />}
+                onClick={() => navigate('/complaints')}
+                color="#03A9F4"
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={4}>
+              <QuickActionCard
+                title="قيد المعالجة"
+                description={`${stats?.inProgressComplaintsCount || 0} شكوى`}
+                icon={<HourglassEmpty />}
+                onClick={() => navigate('/complaints')}
+                color="#FF9800"
+              />
+            </Grid>
+          </Grid>
+        </Paper>
       </Box>
     </Layout>
   );
 };
 
-export default Dashboard; 
+export default Dashboard;

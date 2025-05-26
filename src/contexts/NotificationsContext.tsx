@@ -9,7 +9,7 @@ export interface Notification {
   time: string;
   timestamp?: Timestamp;
   read: boolean;
-  type: 'user' | 'property' | 'reservation' | 'system' | 'payment' | 'success' | 'error';
+  type: 'user' | 'property' | 'reservation' | 'system' | 'payment' | 'success' | 'error' | 'wallet';
 }
 
 // Definir el tipo del contexto
@@ -18,7 +18,8 @@ interface NotificationsContextType {
   unreadCount: number;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
-  addNotification: (messageOrObject: string | Partial<Notification>, type?: 'user' | 'property' | 'reservation' | 'system' | 'payment' | 'success' | 'error') => Promise<void>;
+  deleteAllNotifications: () => Promise<void>;
+  addNotification: (messageOrObject: string | Partial<Notification>, type?: 'user' | 'property' | 'reservation' | 'system' | 'payment' | 'success' | 'error' | 'wallet') => Promise<void>;
   loading: boolean;
 }
 
@@ -28,6 +29,7 @@ const NotificationsContext = createContext<NotificationsContextType>({
   unreadCount: 0,
   markAsRead: async () => {},
   markAllAsRead: async () => {},
+  deleteAllNotifications: async () => {},
   addNotification: async () => {},
   loading: true,
 });
@@ -56,9 +58,18 @@ export const NotificationsProvider = ({ children }: NotificationsProviderProps) 
       const notificationsList: Notification[] = [];
       snapshot.forEach((doc) => {
         const data = doc.data();
+        // فلترة إشعارات المحفظة - عدم إضافتها للقائمة
+        if (data.type === 'wallet') {
+          return; // تخطي إشعارات المحفظة
+        }
+        // فلترة الإشعارات الفارغة - عدم إضافة الإشعارات التي لا تحتوي على رسالة
+        const message = data.message || data.body || '';
+        if (!message || message.trim() === '') {
+          return; // تخطي الإشعارات الفارغة
+        }
         notificationsList.push({
           id: doc.id,
-          message: data.message,
+          message: message,
           time: formatTime(data.timestamp),
           timestamp: data.timestamp,
           read: data.read || false,
@@ -128,14 +139,28 @@ export const NotificationsProvider = ({ children }: NotificationsProviderProps) 
     }
   };
 
+  // حذف جميع الإشعارات
+  const deleteAllNotifications = async () => {
+    try {
+      const batch = writeBatch(db);
+      notifications.forEach((notification) => {
+        const notificationRef = doc(db, 'notifications', notification.id);
+        batch.delete(notificationRef);
+      });
+      await batch.commit();
+    } catch (error) {
+      console.error('Error deleting all notifications:', error);
+    }
+  };
+
   // Añadir una nueva notificación
   const addNotification = async (
-    messageOrObject: string | Partial<Notification>, 
-    type: 'user' | 'property' | 'reservation' | 'system' | 'payment' | 'success' | 'error' = 'system'
+    messageOrObject: string | Partial<Notification>,
+    type: 'user' | 'property' | 'reservation' | 'system' | 'payment' | 'success' | 'error' | 'wallet' = 'system'
   ) => {
     try {
       const notificationsRef = collection(db, 'notifications');
-      
+
       // إذا كان المدخل هو نص (الطريقة القديمة)
       if (typeof messageOrObject === 'string') {
         await addDoc(notificationsRef, {
@@ -144,11 +169,11 @@ export const NotificationsProvider = ({ children }: NotificationsProviderProps) 
           read: false,
           type,
         });
-      } 
+      }
       // إذا كان المدخل كائن (الطريقة الجديدة)
       else {
         const { id, message, read = false, type: objectType = type, time } = messageOrObject;
-        
+
         // إعداد بيانات الإشعار
         const notificationData: any = {
           message,
@@ -156,7 +181,7 @@ export const NotificationsProvider = ({ children }: NotificationsProviderProps) 
           read,
           type: objectType,
         };
-        
+
         // إذا تم تحديد معرف، استخدم وثيقة محددة
         if (id) {
           const docRef = doc(db, 'notifications', id);
@@ -165,7 +190,7 @@ export const NotificationsProvider = ({ children }: NotificationsProviderProps) 
           // إضافة وثيقة جديدة
           await addDoc(notificationsRef, notificationData);
         }
-        
+
         // أضف الإشعار محليًا أيضًا للتحديث الفوري
         const newNotification: Notification = {
           id: id || `temp-${Date.now()}`,
@@ -174,7 +199,7 @@ export const NotificationsProvider = ({ children }: NotificationsProviderProps) 
           read,
           type: objectType,
         };
-        
+
         setNotifications(prev => [newNotification, ...prev]);
       }
     } catch (error) {
@@ -189,6 +214,7 @@ export const NotificationsProvider = ({ children }: NotificationsProviderProps) 
         unreadCount,
         markAsRead,
         markAllAsRead,
+        deleteAllNotifications,
         addNotification,
         loading,
       }}

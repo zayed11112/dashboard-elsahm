@@ -81,34 +81,34 @@ const QuickActionCardContent = styled(CardContent)(
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: theme.spacing(3),
+    padding: theme.spacing(2),
     height: '100%',
     textAlign: 'center',
     zIndex: 2,
     position: 'relative',
     '&:last-child': {
-      paddingBottom: theme.spacing(3),
+      paddingBottom: theme.spacing(2),
     },
   }),
 );
 
 // زر الإضافة المستدير
 const AddButton = styled(IconButton)(({ theme }) => ({
-  width: 60,
-  height: 60,
+  width: 45,
+  height: 45,
   borderRadius: '50%',
   backgroundColor: palette.primary.main,
   color: '#fff',
-  boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
+  boxShadow: '0 6px 15px rgba(0,0,0,0.1)',
   transition: 'all 0.4s ease',
-  marginBottom: theme.spacing(2.5),
+  marginBottom: theme.spacing(1.5),
   '&:hover': {
     backgroundColor: palette.primary.dark,
-    transform: 'scale(1.08) rotate(5deg)',
+    transform: 'scale(1.05) rotate(5deg)',
     animation: `${pulse} 1.5s infinite`,
   },
   '& svg': {
-    fontSize: 28,
+    fontSize: 22,
     transition: 'transform 0.3s ease',
   },
   '&:hover svg': {
@@ -175,8 +175,8 @@ const QuickActionCard = ({
       }}
       onClick={onClick}
     >
-      <GlowEffect 
-        className="glowEffect" 
+      <GlowEffect
+        className="glowEffect"
         sx={{ background: color }}
       />
       <QuickActionCardContent>
@@ -205,22 +205,22 @@ const QuickActionCard = ({
           </AddButton>
         )}
         <Typography
-          variant="h6"
+          variant="subtitle1"
           fontWeight={600}
-          sx={{ mb: 0.5, color: palette.text.primary }}
+          sx={{ mb: 0.3, color: palette.text.primary, fontSize: '0.95rem' }}
         >
           {title}
         </Typography>
         <Divider sx={{ background: `linear-gradient(to right, ${color}, transparent)` }} />
         {description && (
-          <Typography 
-            variant="body2" 
-            color="text.secondary" 
-            sx={{ 
-              fontSize: '1.5rem',
-              fontWeight: 700,
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{
+              fontSize: '1.1rem',
+              fontWeight: 600,
               opacity: 0.9,
-              mt: 1,
+              mt: 0.5,
               textShadow: '0 1px 3px rgba(0,0,0,0.1)',
               color: color || palette.text.primary
             }}
@@ -233,4 +233,4 @@ const QuickActionCard = ({
   );
 };
 
-export default QuickActionCard; 
+export default QuickActionCard;

@@ -25,6 +25,7 @@ import PaymentRequests from './pages/PaymentRequests/PaymentRequests';
 import Banners from './pages/Banners';
 import ComplaintsPage from './pages/Complaints';
 import ComplaintDetailPage from './pages/Complaints/ComplaintDetail';
+import NotificationsPage from './pages/Notifications';
 
 function App() {
   // Inicializar colecciones al cargar la aplicación
@@ -71,22 +72,25 @@ function App() {
 
                 {/* Checkout Requests routes */}
                 <Route path="/checkout-requests" element={<CheckoutRequests />} />
-                
+
                 {/* Add Balance route */}
                 <Route path="/add-balance" element={<AddBalance />} />
-                
+
                 {/* Payment Methods route */}
                 <Route path="/payment-methods" element={<PaymentMethods />} />
 
                 {/* Payment Requests route */}
                 <Route path="/payment-requests" element={<PaymentRequests />} />
-                
+
                 {/* Banners route */}
                 <Route path="/banners" element={<Banners />} />
-                
+
                 {/* Complaints routes */}
                 <Route path="/complaints" element={<ComplaintsPage />} />
                 <Route path="/complaints/:id" element={<ComplaintDetailPage />} />
+
+                {/* Notifications route */}
+                <Route path="/notifications" element={<NotificationsPage />} />
               </Route>
 
               {/* Fallback route */}
