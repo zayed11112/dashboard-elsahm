@@ -85,6 +85,7 @@ interface Property {
   address: string;
   type: string;
   price: number;
+  price_type?: string;
   commission: number;
   deposit: number;
   bedrooms: number;
@@ -118,6 +119,7 @@ const PropertyForm: React.FC = () => {
     address: '',
     type: '',
     price: 0,
+    price_type: '',
     commission: 0,
     deposit: 0,
     bedrooms: 1,
@@ -538,6 +540,7 @@ const PropertyForm: React.FC = () => {
         address: property.address,
         type: property.type,
         price: property.price || 0, // تأكد من أن السعر 0 إذا لم يتم تحديده
+        price_type: property.price_type || '',
         commission: property.commission || 0, // تأكد من أن العمولة 0 إذا لم يتم تحديدها
         deposit: property.deposit || 0, // تأكد من أن العربون 0 إذا لم يتم تحديده
         bedrooms: property.bedrooms,
@@ -780,6 +783,19 @@ const PropertyForm: React.FC = () => {
                       marginLeft: 0
                     }
                   }}
+                />
+              </Grid>
+
+              {/* نوع السعر */}
+              <Grid item xs={12} md={3}>
+                <TextField
+                  fullWidth
+                  label="نوع السعر"
+                  name="price_type"
+                  value={property.price_type || ''}
+                  onChange={handleChange}
+                  placeholder="للعقار كامل / للسرير / للغرفة"
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                 />
               </Grid>
 

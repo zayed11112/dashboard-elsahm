@@ -8,6 +8,7 @@ export interface SupabaseProperty {
   address: string;           // العنوان
   type: string;              // النوع
   price: number;             // السعر
+  price_type?: string;       // نوع السعر
   commission: number;        // العمولة
   deposit: number;           // العربون
   bedrooms: number;          // عدد الغرف

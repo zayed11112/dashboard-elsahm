@@ -71,6 +71,7 @@ interface Property {
   address: string;
   type: string;
   price: number;
+  price_type?: string;     // إضافة حقل نوع السعر
   commission: number;
   bedrooms: number;
   beds: number;
@@ -626,7 +627,37 @@ const Properties: React.FC = () => {
                       <TableCell>
                         {propertyTypes.find(t => t.value === property.type)?.label || property.type}
                       </TableCell>
-                      <TableCell>{formatPrice(property.price)}</TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <Box sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            color: '#1976d2',
+                            fontWeight: 'bold'
+                          }}>
+                            {formatPrice(property.price)}
+                          </Box>
+                          {property.price_type && (
+                            <Chip
+                              size="small"
+                              label={property.price_type}
+                              color="primary"
+                              variant="outlined"
+                              sx={{ 
+                                height: 20, 
+                                fontSize: '0.7rem', 
+                                ml: 1,
+                                maxWidth: 120,
+                                "& .MuiChip-label": {
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                }
+                              }}
+                            />
+                          )}
+                        </Box>
+                      </TableCell>
                       <TableCell>
                         <Box sx={{
                           display: 'flex',
