@@ -72,12 +72,11 @@ export const fetchComplaintsByStatus = async (status: string): Promise<Complaint
   try {
     const q = query(
       collection(db, 'complaints'),
-      where('status', '==', status),
-      orderBy('createdAt', 'desc')
+      where('status', '==', status)
     );
     const querySnapshot = await getDocs(q);
     
-    return querySnapshot.docs.map(doc => {
+    const complaints = querySnapshot.docs.map(doc => {
       const data = doc.data();
       
       // Transform Firestore timestamp to Date
@@ -102,9 +101,11 @@ export const fetchComplaintsByStatus = async (status: string): Promise<Complaint
         imageUrl: data.imageUrl || undefined,
       };
     });
+    
+    return complaints.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   } catch (error) {
     console.error(`Error fetching ${status} complaints:`, error);
-    throw error;
+    return [];
   }
 };
 

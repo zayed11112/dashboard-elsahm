@@ -427,18 +427,20 @@ const PaymentMethods: React.FC = () => {
             </Typography>
             
             <Tooltip title="تحديث البيانات">
-              <IconButton 
-                onClick={fetchPaymentMethods} 
-                disabled={loading}
-                sx={{ 
-                  bgcolor: 'background.paper',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
-                  '&:hover': { bgcolor: 'background.paper', transform: 'rotate(45deg)' },
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                {loading ? <CircularProgress size={20} /> : <RefreshIcon />}
-              </IconButton>
+              <span>
+                <IconButton 
+                  onClick={fetchPaymentMethods} 
+                  disabled={loading}
+                  sx={{ 
+                    bgcolor: 'background.paper',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+                    '&:hover': { bgcolor: 'background.paper', transform: 'rotate(45deg)' },
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  {loading ? <CircularProgress size={20} /> : <RefreshIcon />}
+                </IconButton>
+              </span>
             </Tooltip>
           </Box>
           

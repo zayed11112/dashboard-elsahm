@@ -16,6 +16,10 @@ import {
   Tooltip,
   Card,
   CardContent,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -36,6 +40,10 @@ import {
   ChatBubbleOutline,
   FiberNew,
   HourglassEmpty,
+  KeyboardArrowDown as KeyboardArrowDownIcon,
+  People as PeopleIcon,
+  LocationOn as LocationOnIcon,
+  ViewCarousel as ViewCarouselIcon,
 } from '@mui/icons-material';
 import {
   PropertySearchIcon,
@@ -96,6 +104,7 @@ const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [quickAccessAnchor, setQuickAccessAnchor] = useState<null | HTMLElement>(null);
 
   // دالة لجلب بيانات لوحة التحكم
   const fetchDashboardData = useCallback(async (forceRefresh = false) => {
@@ -370,6 +379,176 @@ const Dashboard: React.FC = () => {
           </Box>
         </Box>
 
+        {/* زر الوصول السريع */}
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 4 }}>
+          <Box
+            sx={{
+              position: 'relative',
+              display: 'inline-block',
+              zIndex: 10
+            }}
+          >
+            <Button
+              variant="contained"
+              color="primary"
+              size="large"
+              onClick={(e) => setQuickAccessAnchor(e.currentTarget)}
+              startIcon={<DashboardIcon />}
+              endIcon={<KeyboardArrowDownIcon />}
+              sx={{
+                borderRadius: '12px',
+                py: 1.5,
+                px: 3,
+                boxShadow: '0 8px 20px rgba(33, 150, 243, 0.2)',
+                fontWeight: 'bold',
+                backgroundImage: 'linear-gradient(45deg, #2196F3, #21CBF3)',
+                '&:hover': {
+                  backgroundImage: 'linear-gradient(45deg, #1976D2, #21CBF3)',
+                  boxShadow: '0 10px 25px rgba(33, 150, 243, 0.3)',
+                }
+              }}
+            >
+              الوصول السريع للصفحات
+            </Button>
+            <Menu
+              anchorEl={quickAccessAnchor}
+              open={Boolean(quickAccessAnchor)}
+              onClose={() => setQuickAccessAnchor(null)}
+              sx={{
+                '& .MuiPaper-root': {
+                  borderRadius: 3,
+                  boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
+                  mt: 1.5,
+                  width: { xs: 300, sm: 350 },
+                  overflow: 'visible',
+                  '&:before': {
+                    content: '""',
+                    display: 'block',
+                    position: 'absolute',
+                    top: 0,
+                    left: '50%',
+                    width: 12,
+                    height: 12,
+                    bgcolor: 'background.paper',
+                    transform: 'translateY(-50%) rotate(45deg) translateX(-50%)',
+                    zIndex: 0,
+                  }
+                }
+              }}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+              transformOrigin={{ vertical: 'top', horizontal: 'center' }}
+            >
+              <Box sx={{ p: 2, textAlign: 'center' }}>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
+                  الوصول السريع
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  اختر الصفحة التي تريد الانتقال إليها
+                </Typography>
+              </Box>
+              <Divider />
+              
+              <Box sx={{ maxHeight: 400, overflowY: 'auto', p: 1 }}>
+                <MenuItem 
+                  onClick={() => {setQuickAccessAnchor(null); navigate('/dashboard')}}
+                  sx={{ borderRadius: 2, mb: 0.5, p: 1.5 }}
+                >
+                  <ListItemIcon><DashboardIcon sx={{ color: palette.primary.main }} /></ListItemIcon>
+                  <ListItemText primary="لوحة التحكم الرئيسية" />
+                </MenuItem>
+                
+                <MenuItem 
+                  onClick={() => {setQuickAccessAnchor(null); navigate('/properties')}}
+                  sx={{ borderRadius: 2, mb: 0.5, p: 1.5 }}
+                >
+                  <ListItemIcon><HomeIcon sx={{ color: palette.primary.main }} /></ListItemIcon>
+                  <ListItemText primary="العقارات" />
+                </MenuItem>
+                
+                <MenuItem 
+                  onClick={() => {setQuickAccessAnchor(null); navigate('/users')}}
+                  sx={{ borderRadius: 2, mb: 0.5, p: 1.5 }}
+                >
+                  <ListItemIcon><PersonIcon sx={{ color: palette.success.main }} /></ListItemIcon>
+                  <ListItemText primary="المستخدمين" />
+                </MenuItem>
+                
+                <MenuItem 
+                  onClick={() => {setQuickAccessAnchor(null); navigate('/owners')}}
+                  sx={{ borderRadius: 2, mb: 0.5, p: 1.5 }}
+                >
+                  <ListItemIcon><PeopleIcon sx={{ color: palette.info.main }} /></ListItemIcon>
+                  <ListItemText primary="المُلاك" />
+                </MenuItem>
+                
+                <MenuItem 
+                  onClick={() => {setQuickAccessAnchor(null); navigate('/categories')}}
+                  sx={{ borderRadius: 2, mb: 0.5, p: 1.5 }}
+                >
+                  <ListItemIcon><CategoryIcon sx={{ color: palette.warning.main }} /></ListItemIcon>
+                  <ListItemText primary="الأقسام" />
+                </MenuItem>
+                
+                <MenuItem 
+                  onClick={() => {setQuickAccessAnchor(null); navigate('/places')}}
+                  sx={{ borderRadius: 2, mb: 0.5, p: 1.5 }}
+                >
+                  <ListItemIcon><LocationOnIcon sx={{ color: '#FF5722' }} /></ListItemIcon>
+                  <ListItemText primary="الأماكن" />
+                </MenuItem>
+                
+                <MenuItem 
+                  onClick={() => {setQuickAccessAnchor(null); navigate('/checkout-requests')}}
+                  sx={{ borderRadius: 2, mb: 0.5, p: 1.5 }}
+                >
+                  <ListItemIcon><ReceiptIcon sx={{ color: '#FF9800' }} /></ListItemIcon>
+                  <ListItemText primary="طلبات الحجز" />
+                </MenuItem>
+                
+                <MenuItem 
+                  onClick={() => {setQuickAccessAnchor(null); navigate('/payment-methods')}}
+                  sx={{ borderRadius: 2, mb: 0.5, p: 1.5 }}
+                >
+                  <ListItemIcon><CreditCardIcon sx={{ color: '#6A1B9A' }} /></ListItemIcon>
+                  <ListItemText primary="طرق الدفع" />
+                </MenuItem>
+                
+                <MenuItem 
+                  onClick={() => {setQuickAccessAnchor(null); navigate('/payment-requests')}}
+                  sx={{ borderRadius: 2, mb: 0.5, p: 1.5 }}
+                >
+                  <ListItemIcon><WalletIcon sx={{ color: '#8E24AA' }} /></ListItemIcon>
+                  <ListItemText primary="طلبات شحن رصيد" />
+                </MenuItem>
+                
+                <MenuItem 
+                  onClick={() => {setQuickAccessAnchor(null); navigate('/add-balance')}}
+                  sx={{ borderRadius: 2, mb: 0.5, p: 1.5 }}
+                >
+                  <ListItemIcon><AttachMoneyIcon sx={{ color: '#AB47BC' }} /></ListItemIcon>
+                  <ListItemText primary="إضافة رصيد" />
+                </MenuItem>
+                
+                <MenuItem 
+                  onClick={() => {setQuickAccessAnchor(null); navigate('/complaints')}}
+                  sx={{ borderRadius: 2, mb: 0.5, p: 1.5 }}
+                >
+                  <ListItemIcon><ChatBubbleOutline sx={{ color: '#0288D1' }} /></ListItemIcon>
+                  <ListItemText primary="الشكاوى" />
+                </MenuItem>
+                
+                <MenuItem 
+                  onClick={() => {setQuickAccessAnchor(null); navigate('/banners')}}
+                  sx={{ borderRadius: 2, mb: 0.5, p: 1.5 }}
+                >
+                  <ListItemIcon><ViewCarouselIcon sx={{ color: '#D32F2F' }} /></ListItemIcon>
+                  <ListItemText primary="البانرات" />
+                </MenuItem>
+              </Box>
+            </Menu>
+          </Box>
+        </Box>
+
         {/* Overview Cards */}
         <Box sx={{ mb: 5 }}>
           <Grid container spacing={3}>
@@ -382,8 +561,15 @@ const Dashboard: React.FC = () => {
                   background: 'linear-gradient(135deg, rgba(227,242,253,0.7) 0%, rgba(187,222,251,0.55) 100%)',
                   backdropFilter: 'blur(8px)',
                   height: '100%',
-                  border: '1px solid rgba(255,255,255,0.3)'
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    boxShadow: '0 8px 25px rgba(25,118,210,0.3)',
+                    transform: 'translateY(-5px)'
+                  }
                 }}
+                onClick={() => navigate('/properties')}
               >
                 <CardContent sx={{ p: 3 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -421,8 +607,15 @@ const Dashboard: React.FC = () => {
                   background: 'linear-gradient(135deg, rgba(232,245,233,0.7) 0%, rgba(200,230,201,0.55) 100%)',
                   backdropFilter: 'blur(8px)',
                   height: '100%',
-                  border: '1px solid rgba(255,255,255,0.3)'
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    boxShadow: '0 8px 25px rgba(76,175,80,0.3)',
+                    transform: 'translateY(-5px)'
+                  }
                 }}
+                onClick={() => navigate('/users')}
               >
                 <CardContent sx={{ p: 3 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -460,8 +653,15 @@ const Dashboard: React.FC = () => {
                   background: 'linear-gradient(135deg, rgba(255,243,224,0.7) 0%, rgba(255,224,178,0.55) 100%)',
                   backdropFilter: 'blur(8px)',
                   height: '100%',
-                  border: '1px solid rgba(255,255,255,0.3)'
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    boxShadow: '0 8px 25px rgba(255,152,0,0.3)',
+                    transform: 'translateY(-5px)'
+                  }
                 }}
+                onClick={() => navigate('/checkout-requests')}
               >
                 <CardContent sx={{ p: 3 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -530,128 +730,6 @@ const Dashboard: React.FC = () => {
             </Grid>
           </Grid>
         </Box>
-
-        {/* الإضافات السريعة - تعديل لجعل العنوان في المنتصف */}
-        <Paper
-          elevation={0}
-          sx={{
-            p: { xs: 2, sm: 3 },
-            mb: 3,
-            borderRadius: 3,
-            border: '1px solid rgba(0,0,0,0.05)',
-            boxShadow: '0 8px 20px rgba(0,0,0,0.04)'
-          }}
-        >
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              alignItems: 'center', // توسيط العناصر أفقياً
-              mb: 4,
-              textAlign: 'center' // إضافة محاذاة نصية للمنتصف
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 2, sm: 2 } }}>
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: { xs: 42, sm: 50 },
-                  height: { xs: 42, sm: 50 },
-                  bgcolor: 'primary.main',
-                  borderRadius: '14px',
-                  boxShadow: '0 5px 15px rgba(33, 150, 243, 0.2)',
-                  mr: 2
-                }}
-              >
-                <AddIcon
-                  sx={{
-                    color: '#fff',
-                    fontSize: { xs: 24, sm: 28 }
-                  }}
-                />
-              </Box>
-              <Box>
-                <Typography
-                  variant="h5"
-                  sx={{
-                    fontWeight: 700,
-                    position: 'relative',
-                    display: 'inline-block',
-                    fontSize: { xs: '1.25rem', sm: '1.5rem' },
-                    textAlign: 'center' // تأكيد على المحاذاة النصية للمنتصف
-                  }}
-                >
-                  الإضافات السريعة
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mt: 0.5, textAlign: 'center' }}
-                >
-                  أضف عناصر جديدة وقم بإدارة النظام بشكل فعّال
-                </Typography>
-              </Box>
-            </Box>
-
-            <Chip
-              label="إدارة سريعة"
-              color="primary"
-              variant="outlined"
-              sx={{
-                borderRadius: '10px',
-                py: 0.5,
-                px: 1,
-                fontWeight: 600,
-                bgcolor: 'rgba(33, 150, 243, 0.05)'
-              }}
-            />
-          </Box>
-
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} md={3}>
-              <QuickActionCard
-                title="إضافة عقار جديد"
-                description=""
-                icon={<HomeIcon />}
-                onClick={() => navigate('/properties/new')}
-                color={palette.primary.main}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={6} md={3}>
-              <QuickActionCard
-                title="إضافة مالك جديد"
-                description=""
-                icon={<PersonIcon />}
-                onClick={() => navigate('/owners')}
-                color={palette.success.main}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={6} md={3}>
-              <QuickActionCard
-                title="إضافة قسم جديد"
-                description=""
-                icon={<CategoryIcon />}
-                onClick={() => navigate('/categories')}
-                color={palette.warning.main}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={6} md={3}>
-              <QuickActionCard
-                title="إضافة مستخدم جديد"
-                description=""
-                icon={<PersonAddIcon />}
-                onClick={() => navigate('/users/new')}
-                color={palette.secondary.main}
-              />
-            </Grid>
-          </Grid>
-        </Paper>
 
         {/* قسم إدارة المدفوعات - الجديد */}
         <Paper
@@ -760,6 +838,114 @@ const Dashboard: React.FC = () => {
                 icon={<AttachMoneyIcon />}
                 onClick={() => navigate('/add-balance')}
                 color="#AB47BC"
+              />
+            </Grid>
+          </Grid>
+        </Paper>
+
+        {/* قسم إدارة طلبات الحجز */}
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 2, sm: 3 },
+            mb: 3,
+            borderRadius: 3,
+            border: '1px solid rgba(0,0,0,0.05)',
+            boxShadow: '0 8px 20px rgba(0,0,0,0.04)'
+          }}
+        >
+          <Box sx={{ textAlign: 'center', mb: 4 }}>
+            <Box
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mb: 2
+              }}
+            >
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: { xs: 42, sm: 50 },
+                  height: { xs: 42, sm: 50 },
+                  backgroundImage: 'linear-gradient(45deg, #FF9800, #FFA726)',
+                  borderRadius: '14px',
+                  boxShadow: '0 5px 15px rgba(255, 152, 0, 0.2)',
+                  mr: 2
+                }}
+              >
+                <ReceiptIcon
+                  sx={{
+                    color: '#fff',
+                    fontSize: { xs: 24, sm: 28 }
+                  }}
+                />
+              </Box>
+              <Box>
+                <Typography
+                  variant="h5"
+                  sx={{
+                    fontWeight: 700,
+                    position: 'relative',
+                    display: 'inline-block',
+                    fontSize: { xs: '1.25rem', sm: '1.5rem' }
+                  }}
+                >
+                  إدارة طلبات الحجز
+                </Typography>
+              </Box>
+            </Box>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mb: 2 }}
+            >
+              متابعة وإدارة طلبات الحجز والحجوزات المؤكدة
+            </Typography>
+            <Chip
+              label={`${stats?.pendingCheckoutRequestsCount || 0} طلب جاري المعالجة`}
+              color="warning"
+              variant="outlined"
+              sx={{
+                borderRadius: '10px',
+                py: 0.5,
+                px: 1,
+                fontWeight: 600,
+                bgcolor: 'rgba(255, 152, 0, 0.05)'
+              }}
+            />
+          </Box>
+
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} md={4}>
+              <QuickActionCard
+                title="جميع طلبات الحجز"
+                description={`${stats?.checkoutRequestsCount || 0} طلب`}
+                icon={<ReceiptIcon />}
+                onClick={() => navigate('/checkout-requests')}
+                color="#FF9800"
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={4}>
+              <QuickActionCard
+                title="طلبات جاري المعالجة"
+                description={`${stats?.pendingCheckoutRequestsCount || 0} طلب`}
+                icon={<HourglassEmpty />}
+                onClick={() => navigate('/checkout-requests')}
+                color="#FFA726"
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={4}>
+              <QuickActionCard
+                title="طلبات مؤكدة"
+                description={`${stats?.confirmedCheckoutRequestsCount || 0} طلب`}
+                icon={<BookingConfirmIcon />}
+                onClick={() => navigate('/checkout-requests')}
+                color="#F57C00"
               />
             </Grid>
           </Grid>

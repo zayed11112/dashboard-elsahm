@@ -26,6 +26,8 @@ import Banners from './pages/Banners';
 import ComplaintsPage from './pages/Complaints';
 import ComplaintDetailPage from './pages/Complaints/ComplaintDetail';
 import NotificationsPage from './pages/Notifications';
+import Profile from './pages/Profile/Profile';
+import Settings from './pages/Settings/Settings';
 
 function App() {
   // Inicializar colecciones al cargar la aplicación
@@ -91,6 +93,10 @@ function App() {
 
                 {/* Notifications route */}
                 <Route path="/notifications" element={<NotificationsPage />} />
+
+                {/* Profile and Settings routes */}
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/settings" element={<Settings />} />
               </Route>
 
               {/* Fallback route */}

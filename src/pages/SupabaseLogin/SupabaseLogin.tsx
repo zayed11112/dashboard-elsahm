@@ -11,6 +11,7 @@ import {
   Container,
 } from '@mui/material';
 import { supabaseAuthService } from '../../services/supabaseAuthService';
+import NavBar from '../../components/Navbar';
 
 const SupabaseLogin: React.FC = () => {
   const navigate = useNavigate();
@@ -72,118 +73,122 @@ const SupabaseLogin: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="sm">
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        py: 4
-      }}>
-        <Paper 
-          elevation={3} 
-          sx={{ 
-            p: 4, 
-            width: '100%', 
-            borderRadius: 2,
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
-          }}
-        >
-          <Typography 
-            variant="h5" 
-            component="h1" 
-            align="center" 
-            gutterBottom
-            fontWeight="bold"
-            color="primary"
+    <>
+      <NavBar title="تسجيل دخول Supabase" />
+      <Container maxWidth="sm">
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: 'calc(100vh - 70px)',
+          py: 4,
+          mt: 9
+        }}>
+          <Paper 
+            elevation={3} 
+            sx={{ 
+              p: 4, 
+              width: '100%', 
+              borderRadius: 2,
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+            }}
           >
-            تسجيل الدخول إلى Supabase
-          </Typography>
-          
-          <Typography 
-            variant="body2" 
-            color="text.secondary" 
-            align="center" 
-            sx={{ mb: 3 }}
-          >
-            قم بتسجيل الدخول للوصول إلى لوحة التحكم
-          </Typography>
-
-          {error && (
-            <Alert severity="error" sx={{ mb: 3, borderRadius: 1 }}>
-              {error}
-            </Alert>
-          )}
-          
-          {success && (
-            <Alert severity="success" sx={{ mb: 3, borderRadius: 1 }}>
-              {success}
-            </Alert>
-          )}
-
-          <Box component="form" onSubmit={handleLogin} sx={{ mt: 1 }}>
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              id="email"
-              label="البريد الإلكتروني"
-              name="email"
-              autoComplete="email"
-              autoFocus
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              sx={{ mb: 2, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-            />
-            
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              name="password"
-              label="كلمة المرور"
-              type="password"
-              id="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              sx={{ mb: 3, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-            />
-
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
+            <Typography 
+              variant="h5" 
+              component="h1" 
+              align="center" 
+              gutterBottom
+              fontWeight="bold"
               color="primary"
-              disabled={loading}
-              sx={{ 
-                py: 1.5, 
-                mb: 2, 
-                borderRadius: 2,
-                fontWeight: 'bold'
-              }}
             >
-              {loading ? <CircularProgress size={24} /> : 'تسجيل الدخول'}
-            </Button>
+              تسجيل الدخول إلى Supabase
+            </Typography>
             
-            <Button
-              fullWidth
-              variant="outlined"
-              color="primary"
-              disabled={loading}
-              onClick={handleSignUp}
-              sx={{ 
-                py: 1.5, 
-                borderRadius: 2
-              }}
+            <Typography 
+              variant="body2" 
+              color="text.secondary" 
+              align="center" 
+              sx={{ mb: 3 }}
             >
-              إنشاء حساب جديد
-            </Button>
-          </Box>
-        </Paper>
-      </Box>
-    </Container>
+              قم بتسجيل الدخول للوصول إلى لوحة التحكم
+            </Typography>
+
+            {error && (
+              <Alert severity="error" sx={{ mb: 3, borderRadius: 1 }}>
+                {error}
+              </Alert>
+            )}
+            
+            {success && (
+              <Alert severity="success" sx={{ mb: 3, borderRadius: 1 }}>
+                {success}
+              </Alert>
+            )}
+
+            <Box component="form" onSubmit={handleLogin} sx={{ mt: 1 }}>
+              <TextField
+                margin="normal"
+                required
+                fullWidth
+                id="email"
+                label="البريد الإلكتروني"
+                name="email"
+                autoComplete="email"
+                autoFocus
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                sx={{ mb: 2, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+              />
+              
+              <TextField
+                margin="normal"
+                required
+                fullWidth
+                name="password"
+                label="كلمة المرور"
+                type="password"
+                id="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                sx={{ mb: 3, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+              />
+
+              <Button
+                type="submit"
+                fullWidth
+                variant="contained"
+                color="primary"
+                disabled={loading}
+                sx={{ 
+                  py: 1.5, 
+                  mb: 2, 
+                  borderRadius: 2,
+                  fontWeight: 'bold'
+                }}
+              >
+                {loading ? <CircularProgress size={24} /> : 'تسجيل الدخول'}
+              </Button>
+              
+              <Button
+                fullWidth
+                variant="outlined"
+                color="primary"
+                disabled={loading}
+                onClick={handleSignUp}
+                sx={{ 
+                  py: 1.5, 
+                  borderRadius: 2
+                }}
+              >
+                إنشاء حساب جديد
+              </Button>
+            </Box>
+          </Paper>
+        </Box>
+      </Container>
+    </>
   );
 };
 
