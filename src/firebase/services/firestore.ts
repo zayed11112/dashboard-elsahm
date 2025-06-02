@@ -40,6 +40,7 @@ export interface User {
   name: string;
   email: string;
   phone?: string;
+  phoneNumber?: string;
   role: 'admin' | 'user';
   avatarUrl?: string;
   createdAt: Timestamp | Date;

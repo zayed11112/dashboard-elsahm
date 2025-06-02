@@ -48,6 +48,7 @@ import {
   Refresh as RefreshIcon,
   FilterList as FilterListIcon,
   FileDownload as FileDownloadIcon,
+  Phone as PhoneIcon,
 } from '@mui/icons-material';
 import Layout from '../../components/Layout';
 import { usersApi } from '../../services/api';
@@ -99,7 +100,7 @@ const exportToExcel = (users: User[]) => {
       'المعرف': user.id,
       'الاسم': user.name,
       'البريد الإلكتروني': user.email,
-      'رقم الهاتف': user.phone,
+      'رقم الهاتف': user.phone || '-',
       'الرقم الجامعي': user.studentId || '-',
       'الكلية': user.faculty || '-',
       'الفرع': user.branch || '-',
@@ -183,6 +184,8 @@ const Users: React.FC = () => {
           const query = searchQuery.toLowerCase().trim();
           const filteredUsers = response.data.filter((user: User) => 
             user.name?.toLowerCase().includes(query) || 
+            user.email?.toLowerCase().includes(query) ||
+            user.phone?.toLowerCase().includes(query) ||
             user.studentId?.toLowerCase().includes(query) || 
             user.faculty?.toLowerCase().includes(query) ||
             user.facultyEng?.toLowerCase().includes(query) ||
@@ -313,6 +316,8 @@ const Users: React.FC = () => {
           const query = searchQuery.toLowerCase().trim();
           const filteredUsers = response.data.filter((user: User) => 
             user.name?.toLowerCase().includes(query) || 
+            user.email?.toLowerCase().includes(query) ||
+            user.phone?.toLowerCase().includes(query) ||
             user.studentId?.toLowerCase().includes(query) || 
             user.faculty?.toLowerCase().includes(query) ||
             user.facultyEng?.toLowerCase().includes(query) ||
@@ -629,6 +634,7 @@ const Users: React.FC = () => {
                   <TableRow>
                     <TableCell sx={{ color: '#1e88e5', fontWeight: 'bold', fontSize: '1rem' }}>المستخدم</TableCell>
                     <TableCell sx={{ color: '#1e88e5', fontWeight: 'bold', fontSize: '1rem' }}>البريد الإلكتروني</TableCell>
+                    <TableCell sx={{ color: '#1e88e5', fontWeight: 'bold', fontSize: '1rem' }}>رقم الهاتف</TableCell>
                     <TableCell sx={{ color: '#1e88e5', fontWeight: 'bold', fontSize: '1rem' }}>ID</TableCell>
                     <TableCell sx={{ color: '#1e88e5', fontWeight: 'bold', fontSize: '1rem' }}>الكلية</TableCell>
                     <TableCell sx={{ color: '#1e88e5', fontWeight: 'bold', fontSize: '1rem' }}>الفرع</TableCell>
@@ -677,6 +683,22 @@ const Users: React.FC = () => {
                         </Box>
                       </TableCell>
                       <TableCell>{user.email}</TableCell>
+                      <TableCell>
+                        {user.phone ? (
+                          <Chip
+                            label={user.phone}
+                            variant="outlined"
+                            color="info"
+                            size="small"
+                            icon={<PhoneIcon sx={{ fontSize: '14px' }} />}
+                            sx={{
+                              fontWeight: 'bold',
+                              borderRadius: '8px',
+                              '& .MuiChip-icon': { color: 'info.main' }
+                            }}
+                          />
+                        ) : '-'}
+                      </TableCell>
                       <TableCell>{user.studentId || '-'}</TableCell>
                       <TableCell>{user.faculty || '-'}</TableCell>
                       <TableCell>{user.branch || '-'}</TableCell>

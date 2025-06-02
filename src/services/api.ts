@@ -106,7 +106,7 @@ export const usersApi = {
           id: user.id || '',
           name: user.name || '',
           email: user.email || '',
-          phone: user.phone || '',
+          phone: user.phone || user.phoneNumber || '',
           role: user.role || 'user',
           status: 'طالب', // Valor predeterminado
           createdAt: new Date().toLocaleDateString('ar-SA'),
@@ -177,6 +177,7 @@ export const usersApi = {
       name: data.name,
       email: data.email,
       phone: data.phone,
+      phoneNumber: data.phone, // Add phoneNumber for mobile app compatibility
       role: data.role === 'admin' ? 'admin' : 'user',
       avatarUrl: data.avatarUrl,
       status: data.status,
@@ -198,7 +199,10 @@ export const usersApi = {
 
     if (data.name !== undefined) firebaseData.name = data.name;
     if (data.email !== undefined) firebaseData.email = data.email;
-    if (data.phone !== undefined) firebaseData.phone = data.phone;
+    if (data.phone !== undefined) {
+      firebaseData.phone = data.phone;
+      firebaseData.phoneNumber = data.phone; // Also update phoneNumber for mobile app compatibility
+    }
     if (data.role !== undefined) firebaseData.role = data.role === 'admin' ? 'admin' : 'user';
     if (data.avatarUrl !== undefined) firebaseData.avatarUrl = data.avatarUrl;
     if (data.status !== undefined) firebaseData.status = data.status;

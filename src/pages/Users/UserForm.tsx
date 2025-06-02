@@ -64,6 +64,7 @@ interface User {
   id?: string;
   name: string;
   email: string;
+  phone: string;
   role: string;
   status: string;
   avatarUrl?: string;
@@ -85,6 +86,7 @@ const UserForm: React.FC = () => {
   const [user, setUser] = useState<User>({
     name: '',
     email: '',
+    phone: '',
     role: 'user',
     status: 'محاسب عام',
     avatarUrl: '',
@@ -337,7 +339,34 @@ const UserForm: React.FC = () => {
                 />
               </Grid>
 
-
+              {/* Phone */}
+              <Grid item xs={12} md={6}>
+                <TextField
+                  required
+                  fullWidth
+                  label="الهاتف"
+                  name="phone"
+                  value={user.phone}
+                  onChange={handleChange}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <Box sx={{ mr: 1 }}>📞</Box>
+                        </Box>
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2,
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderWidth: 2
+                      }
+                    }
+                  }}
+                />
+              </Grid>
 
               {/* Role */}
               <Grid item xs={12} md={6}>

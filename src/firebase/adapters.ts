@@ -80,7 +80,7 @@ export const dashboardAdapters = {
       id: user.id || '',
       name: user.name || '',
       email: user.email || '',
-      phone: user.phone || '',
+      phone: user.phone || user.phoneNumber || '', // Try to get phone, and if not available, try phoneNumber
       role: user.role || 'user',
       status: userStatus,
       // Guardar tanto la fecha formateada como el objeto Date original
